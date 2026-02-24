@@ -35,8 +35,12 @@
         
         #resultados { text-align: left; background: #fff; padding: 15px; border-radius: 10px; border: 2px solid var(--blue); margin-top: 20px; display: none; }
         .label-res { font-size: 12px; color: #34495e; font-weight: bold; margin-bottom: 5px; margin-top: 15px; display: block; text-transform: uppercase; }
-        .checkbox-group { max-height: 180px; overflow-y: auto; border: 1px solid #bdc3c7; padding: 12px; border-radius: 10px; background: #fcfcfc; }
+        .checkbox-group { max-height: 250px; overflow-y: auto; border: 1px solid #bdc3c7; padding: 12px; border-radius: 10px; background: #fcfcfc; }
         .radio-group { display: flex; gap: 20px; padding: 10px 0; }
+        
+        .event-container { display: flex; gap: 10px; }
+        .event-container select { flex: 1; }
+        .btn-add { background: var(--blue); color: white; border: none; padding: 0 20px; border-radius: 10px; font-size: 24px; cursor: pointer; }
     </style>
 </head>
 <body>
@@ -99,12 +103,10 @@
                 <input type="tel" id="resCelular" placeholder="0981...">
 
                 <label class="label-res">NOMBRE DEL EVENTO *:</label>
-                <select id="resEvento">
-                    <option value="IPS">IPS</option>
-                    <option value="Playa San Jose">Playa San Jose</option>
-                    <option value="Rakiura">Rakiura</option>
-                    <option value="Otros">Otros</option>
-                </select>
+                <div class="event-container">
+                    <select id="resEvento"></select>
+                    <button class="btn-add" onclick="agregarEvento()">+</button>
+                </div>
 
                 <label class="label-res">CORREO ELECTRÓNICO:</label>
                 <input type="email" id="resCorreoCliente">
@@ -116,12 +118,7 @@
                 </div>
 
                 <label class="label-res">MOTIVOS DE ATENCIÓN:</label>
-                <div class="checkbox-group" id="contenedorMotivos">
-                    <label style="display:block"><input type="checkbox" name="motivoItem" value="Consultas"> Consultas</label>
-                    <label style="display:block"><input type="checkbox" name="motivoItem" value="Activación TC/TD"> Activación TC/TD</label>
-                    <label style="display:block"><input type="checkbox" name="motivoItem" value="Firma CU"> Firma CU</label>
-                    <label style="display:block"><input type="checkbox" name="motivoItem" value="Otro"> Otro</label>
-                </div>
+                <div class="checkbox-group" id="contenedorMotivos"></div>
 
                 <button class="btn" onclick="confirmarGuardado()">✅ GUARDAR REGISTRO</button>
                 <button class="btn" style="background:#e74c3c;" onclick="resetEscaneo()">🔄 DESCARTAR</button>
@@ -146,8 +143,19 @@
         const auth = firebase.auth();
         const db = firebase.firestore();
 
-        // 🟢 NUEVA URL DE GOOGLE SHEETS CONFIGURADA
         const URL_EXCEL = 'https://script.google.com/a/macros/ueno.com.py/s/AKfycbwltAbV25PBEiCkCU5YCOb-4upps3eO6dzPwxH1ANtgT17VCOkrDQfifzpF2myDWXbt/exec';
+
+        // LISTAS DE OPCIONES
+        const EVENTOS_DEFAULT = ["IPS", "Playa San Jose", "Rakiura", "Otros"];
+        const MOTIVOS = [
+            "Consultas", "Activación TC/TD", "Firma CU", "Otro",
+            "Onboarding sin retiro", "Onboarding con retiro", "Solo vinculación",
+            "TC Albirroja nueva", "Error vinculación", "Inconveniente Registro",
+            "Oferta TC denegada", "Oferta Préstamo", "Cuenta menor",
+            "Reimpresión tarjeta", "Reimpresión Albirroja", "Ahorro programado",
+            "Reclamos", "Solicitud TC", "Aumento línea", "Error app",
+            "Vinculación Alias", "Fé de vida", "Cambio entidad jubilados", "Nuevo Jubilado"
+        ];
 
         function showRegister(val) {
             document.getElementById('loginBox').style.display = val ? 'none' : 'block';
@@ -166,8 +174,34 @@
                 document.getElementById('scannerSection').style.display = 'block';
                 document.getElementById('welcomeMsg').innerText = "Bienvenido: " + (user.displayName || user.email);
                 encenderCamara();
+                cargarOpciones();
             }
         });
+
+        function cargarOpciones() {
+            // Cargar Eventos
+            const evSel = document.getElementById('resEvento');
+            const evs = JSON.parse(localStorage.getItem('listaEventosPY')) || EVENTOS_DEFAULT;
+            evSel.innerHTML = '<option value="">Seleccionar...</option>';
+            evs.forEach(e => evSel.innerHTML += `<option value="${e}">${e}</option>`);
+
+            // Cargar Motivos
+            const motCont = document.getElementById('contenedorMotivos');
+            motCont.innerHTML = "";
+            MOTIVOS.forEach(m => {
+                motCont.innerHTML += `<label style="display:block; margin-bottom:8px;"><input type="checkbox" name="motivoItem" value="${m}"> ${m}</label>`;
+            });
+        }
+
+        function agregarEvento() {
+            let n = prompt("Nombre del nuevo evento:");
+            if (n) {
+                let evs = JSON.parse(localStorage.getItem('listaEventosPY')) || EVENTOS_DEFAULT;
+                evs.push(n);
+                localStorage.setItem('listaEventosPY', JSON.stringify(evs));
+                cargarOpciones();
+            }
+        }
 
         document.getElementById('registerForm').onsubmit = e => {
             e.preventDefault();
@@ -222,12 +256,14 @@
         async function confirmarGuardado() {
             const nom = document.getElementById('resNombre').value;
             const ced = document.getElementById('resCedula').value;
-            if(!nom || !ced) return alert("Nombre y Cédula son obligatorios");
+            const evento = document.getElementById('resEvento').value;
+            if(!nom || !ced || !evento) return alert("Nombre, Cédula y Evento son obligatorios");
 
             const motivos = Array.from(document.querySelectorAll('input[name="motivoItem"]:checked')).map(cb => cb.value).join(' | ');
+            if(!motivos) return alert("Debes seleccionar al menos un motivo");
             
             const payload = {
-                evento: document.getElementById('resEvento').value,
+                evento: evento,
                 nombre: nom,
                 cedula: ced,
                 celular: document.getElementById('resCelular').value,
@@ -248,7 +284,7 @@
                     body: JSON.stringify(payload)
                 });
 
-                alert("✅ Registro guardado y enviado al nuevo Excel.");
+                alert("✅ Registro guardado y enviado al Excel.");
                 resetEscaneo();
                 document.getElementById('resNombre').value = "";
                 document.getElementById('resCedula').value = "";
