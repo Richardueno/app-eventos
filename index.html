@@ -4,20 +4,23 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sistema de Gestión PY</title>
+    
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
     <style>
-        :root { --primary: #27ae60; --blue: #3498db; }
+        :root { --primary: #27ae60; --blue: #3498db; --dark: #2c3e50; }
         body { font-family: 'Segoe UI', sans-serif; background: #f4f7f6; margin: 0; display: flex; justify-content: center; }
-        .card { background: white; width: 100%; max-width: 480px; min-height: 100vh; padding: 20px; box-sizing: border-box; text-align: center; }
+        .card { background: white; width: 100%; max-width: 480px; min-height: 100vh; padding: 20px; text-align: center; box-shadow: 0 0 20px rgba(0,0,0,0.1); box-sizing: border-box; }
         
-        h2 { font-weight: bold; margin-bottom: 30px; font-size: 28px; }
+        h2 { font-weight: bold; margin-bottom: 30px; font-size: 28px; color: var(--dark); }
         .auth-form { display: flex; flex-direction: column; gap: 15px; }
         .row { display: flex; gap: 10px; }
         .input-group { position: relative; width: 100%; }
-        input { padding: 15px; border-radius: 10px; border: 1px solid #ddd; font-size: 16px; width: 100%; box-sizing: border-box; background: #fff; }
+        input, select, textarea { padding: 15px; border-radius: 10px; border: 1px solid #ddd; font-size: 16px; width: 100%; box-sizing: border-box; background: #fff; }
         
         .eye-icon { position: absolute; right: 15px; top: 50%; transform: translateY(-50%); cursor: pointer; font-size: 20px; }
         
@@ -25,9 +28,15 @@
         .btn-reg { background: var(--blue); }
         .link-auth { color: var(--blue); text-decoration: underline; cursor: pointer; display: inline-block; margin-top: 20px; font-size: 15px; }
 
-        /* Estilos del escáner y resultados */
         #scannerSection { display: none; }
-        #resultados { text-align: left; background: #fff; padding: 15px; border-radius: 10px; border: 2px solid var(--blue); margin-top: 20px; }
+        #cameraView { margin-top: 20px; }
+        .scanner-container { background:#000; height:260px; border-radius:15px; overflow:hidden; position: relative; }
+        video { width:100%; height:100%; object-fit:cover; }
+        
+        #resultados { text-align: left; background: #fff; padding: 15px; border-radius: 10px; border: 2px solid var(--blue); margin-top: 20px; display: none; }
+        .label-res { font-size: 12px; color: #34495e; font-weight: bold; margin-bottom: 5px; margin-top: 15px; display: block; text-transform: uppercase; }
+        .checkbox-group { max-height: 180px; overflow-y: auto; border: 1px solid #bdc3c7; padding: 12px; border-radius: 10px; background: #fcfcfc; }
+        .radio-group { display: flex; gap: 20px; padding: 10px 0; }
     </style>
 </head>
 <body>
@@ -64,17 +73,65 @@
                 </div>
                 <button type="submit" class="btn btn-reg">REGISTRARME</button>
             </form>
-            <a class="link-auth" style="color: #27ae60;" onclick="showRegister(false)">¿Ya tienes cuenta? Inicia sesión</a>
+            <a class="link-auth" style="color: var(--primary);" onclick="showRegister(false)">¿Ya tienes cuenta? Inicia sesión</a>
         </div>
 
         <div id="scannerSection">
-            <h3 id="welcomeMsg"></h3>
-            <div style="background:#000; height:260px; border-radius:15px; overflow:hidden;">
-                <video id="video" autoplay playsinline style="width:100%; height:100%; object-fit:cover;"></video>
+            <h3 id="welcomeMsg" style="color: var(--dark);"></h3>
+            
+            <div id="cameraView">
+                <div class="scanner-container">
+                    <video id="video" autoplay playsinline></video>
+                </div>
+                <button class="btn" onclick="capturarCedula()">📷 CAPTURAR DATOS</button>
             </div>
-            <button class="btn" onclick="capturarCedula()">📷 CAPTURAR DATOS</button>
+
+            <div id="loading" style="display:none; padding:20px; font-weight:bold; color:var(--primary);">⌛ PROCESANDO CÉDULA...</div>
+
+            <div id="resultados">
+                <label class="label-res">NOMBRE Y APELLIDO *:</label>
+                <input type="text" id="resNombre">
+                
+                <label class="label-res">NÚMERO DE CÉDULA *:</label>
+                <input type="number" id="resCedula">
+
+                <label class="label-res">NÚMERO DE CELULAR *:</label>
+                <input type="tel" id="resCelular" placeholder="0981...">
+
+                <label class="label-res">NOMBRE DEL EVENTO *:</label>
+                <select id="resEvento">
+                    <option value="IPS">IPS</option>
+                    <option value="Playa San Jose">Playa San Jose</option>
+                    <option value="Rakiura">Rakiura</option>
+                    <option value="Otros">Otros</option>
+                </select>
+
+                <label class="label-res">CORREO ELECTRÓNICO:</label>
+                <input type="email" id="resCorreoCliente">
+
+                <label class="label-res">¿PRODUCTO NUEVO? *</label>
+                <div class="radio-group">
+                    <label><input type="radio" name="resProducto" value="SI"> SI</label>
+                    <label><input type="radio" name="resProducto" value="No" checked> NO</label>
+                </div>
+
+                <label class="label-res">MOTIVOS DE ATENCIÓN:</label>
+                <div class="checkbox-group" id="contenedorMotivos">
+                    <label style="display:block"><input type="checkbox" name="motivoItem" value="Consultas"> Consultas</label>
+                    <label style="display:block"><input type="checkbox" name="motivoItem" value="Activación TC/TD"> Activación TC/TD</label>
+                    <label style="display:block"><input type="checkbox" name="motivoItem" value="Firma CU"> Firma CU</label>
+                    <label style="display:block"><input type="checkbox" name="motivoItem" value="Otro"> Otro</label>
+                </div>
+
+                <button class="btn" onclick="confirmarGuardado()">✅ GUARDAR REGISTRO</button>
+                <button class="btn" style="background:#e74c3c;" onclick="resetEscaneo()">🔄 DESCARTAR</button>
             </div>
+            
+            <button onclick="auth.signOut(); location.reload();" style="margin-top:30px; color:red; background:none; border:none; cursor:pointer; text-decoration:underline;">Cerrar Sesión</button>
+        </div>
     </div>
+
+    <canvas id="canvas" style="display:none;"></canvas>
 
     <script>
         const firebaseConfig = {
@@ -89,8 +146,8 @@
         const auth = firebase.auth();
         const db = firebase.firestore();
 
-        // TU LINK DE GOOGLE SHEETS
-        const URL_EXCEL = 'https://script.google.com/a/macros/ueno.com.py/s/AKfycbyp50uQF0KAQPWCBh_lwxDwlBEVPd9DXZLkQu5_2NrY15yfQc7Hjg4JljQTNoEkKzSBsA/exec';
+        // 🟢 NUEVA URL DE GOOGLE SHEETS CONFIGURADA
+        const URL_EXCEL = 'https://script.google.com/a/macros/ueno.com.py/s/AKfycbwltAbV25PBEiCkCU5YCOb-4upps3eO6dzPwxH1ANtgT17VCOkrDQfifzpF2myDWXbt/exec';
 
         function showRegister(val) {
             document.getElementById('loginBox').style.display = val ? 'none' : 'block';
@@ -108,6 +165,7 @@
                 document.getElementById('registerBox').style.display = 'none';
                 document.getElementById('scannerSection').style.display = 'block';
                 document.getElementById('welcomeMsg').innerText = "Bienvenido: " + (user.displayName || user.email);
+                encenderCamara();
             }
         });
 
@@ -119,8 +177,9 @@
 
             auth.createUserWithEmailAndPassword(document.getElementById('regEmail').value, p1)
                 .then(res => {
-                    res.user.updateProfile({ displayName: document.getElementById('regNombre').value });
-                    alert("Cuenta creada con éxito");
+                    res.user.updateProfile({ displayName: document.getElementById('regNombre').value + " " + document.getElementById('regApellido').value });
+                    alert("Cuenta creada con éxito. Ya puedes ingresar.");
+                    showRegister(false);
                 })
                 .catch(err => alert("Error: " + err.message));
         };
@@ -128,8 +187,75 @@
         document.getElementById('loginForm').onsubmit = e => {
             e.preventDefault();
             auth.signInWithEmailAndPassword(document.getElementById('email').value, document.getElementById('password').value)
-                .catch(err => alert("Datos incorrectos"));
+                .catch(err => alert("Datos incorrectos o usuario no encontrado"));
         };
+
+        async function encenderCamara() {
+            try {
+                const s = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+                document.getElementById('video').srcObject = s;
+            } catch (e) { alert("Error al abrir cámara: " + e); }
+        }
+
+        async function capturarCedula() {
+            document.getElementById('cameraView').style.display = 'none';
+            document.getElementById('loading').style.display = 'block';
+            const v = document.getElementById('video');
+            const c = document.getElementById('canvas');
+            c.width = v.videoWidth; c.height = v.videoHeight;
+            c.getContext('2d').drawImage(v, 0, 0);
+            
+            try {
+                const res = await Tesseract.recognize(c.toDataURL(), 'spa');
+                document.getElementById('resCedula').value = res.data.text.replace(/\D/g, '').substring(0,8);
+            } catch (e) { console.log("Error OCR:", e); }
+            
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('resultados').style.display = 'block';
+        }
+
+        function resetEscaneo() {
+            document.getElementById('resultados').style.display = 'none';
+            document.getElementById('cameraView').style.display = 'block';
+        }
+
+        async function confirmarGuardado() {
+            const nom = document.getElementById('resNombre').value;
+            const ced = document.getElementById('resCedula').value;
+            if(!nom || !ced) return alert("Nombre y Cédula son obligatorios");
+
+            const motivos = Array.from(document.querySelectorAll('input[name="motivoItem"]:checked')).map(cb => cb.value).join(' | ');
+            
+            const payload = {
+                evento: document.getElementById('resEvento').value,
+                nombre: nom,
+                cedula: ced,
+                celular: document.getElementById('resCelular').value,
+                correo: document.getElementById('resCorreoCliente').value,
+                producto: document.querySelector('input[name="resProducto"]:checked').value,
+                motivos: motivos,
+                operador: auth.currentUser.email
+            };
+
+            try {
+                // 1. Guardar en Firebase
+                await db.collection("escaneos").add({ ...payload, fecha_registro: new Date() });
+
+                // 2. Enviar a Google Sheets
+                fetch(URL_EXCEL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    body: JSON.stringify(payload)
+                });
+
+                alert("✅ Registro guardado y enviado al nuevo Excel.");
+                resetEscaneo();
+                document.getElementById('resNombre').value = "";
+                document.getElementById('resCedula').value = "";
+                document.getElementById('resCelular').value = "";
+                document.getElementById('resCorreoCliente').value = "";
+            } catch (e) { alert("Error al guardar: " + e); }
+        }
     </script>
 </body>
 </html>
