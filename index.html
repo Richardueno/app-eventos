@@ -64,9 +64,9 @@
         <div id="loginSection">
             <h2>Ingreso al Sistema</h2>
             <form class="auth-form" id="loginForm">
-                <input type="email" id="email" placeholder="Correo electrónico" required>
+                <input type="email" id="email" name="email" placeholder="Correo electrónico" autocomplete="username" required>
                 <div class="password-container">
-                    <input type="password" id="password" placeholder="Contraseña" required>
+                    <input type="password" id="password" name="password" placeholder="Contraseña" autocomplete="current-password" required>
                     <span class="toggle-password" onclick="mostrarOcultarClave('password', 'ojoLogin')"><span id="ojoLogin">👁️</span></span>
                 </div>
                 <button type="submit" class="btn">INGRESAR</button>
@@ -78,16 +78,16 @@
             <h2>Crear Cuenta</h2>
             <form class="auth-form" id="registerForm">
                 <div class="name-grid">
-                    <input type="text" id="regNombre" placeholder="Nombre" required>
-                    <input type="text" id="regApellido" placeholder="Apellido" required>
+                    <input type="text" id="regNombre" name="fname" placeholder="Nombre" autocomplete="given-name" required>
+                    <input type="text" id="regApellido" name="lname" placeholder="Apellido" autocomplete="family-name" required>
                 </div>
-                <input type="email" id="regEmail" placeholder="Correo electrónico" required>
+                <input type="email" id="regEmail" name="email" placeholder="Correo electrónico" autocomplete="username" required>
                 <div class="password-container">
-                    <input type="password" id="regPassword" placeholder="Contraseña (mín. 6 letras)" required>
+                    <input type="password" id="regPassword" name="new-password" placeholder="Contraseña (mín. 6 letras)" autocomplete="new-password" required>
                     <span class="toggle-password" onclick="mostrarOcultarClave('regPassword', 'ojoReg1')"><span id="ojoReg1">👁️</span></span>
                 </div>
                 <div class="password-container">
-                    <input type="password" id="regConfirmPassword" placeholder="Confirme su contraseña" required>
+                    <input type="password" id="regConfirmPassword" name="confirm-password" placeholder="Confirme su contraseña" autocomplete="new-password" required>
                     <span class="toggle-password" onclick="mostrarOcultarClave('regConfirmPassword', 'ojoReg2')"><span id="ojoReg2">👁️</span></span>
                 </div>
                 <button type="submit" class="btn" style="background: #3498db;">REGISTRARME</button>
@@ -161,7 +161,6 @@
     <canvas id="canvas" style="display:none;"></canvas>
 
     <script>
-        // CONFIGURACIÓN DE FIREBASE
         const firebaseConfig = {
             apiKey: "AIzaSyAE1KBu1CufjKO65OpVHOPcmhyliQYsoDU",
             authDomain: "miescanerweb.firebaseapp.com",
@@ -173,12 +172,9 @@
         firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
         const db = firebase.firestore();
-        db.enablePersistence().catch(err => console.log(err.code));
 
-        // 🟢 TU NUEVO ENLACE DE GOOGLE SHEETS
         const URL_GOOGLE = 'https://script.google.com/a/macros/ueno.com.py/s/AKfycbwltAbV25PBEiCkCU5YCOb-4upps3eO6dzPwxH1ANtgT17VCOkrDQfifzpF2myDWXbt/exec';
 
-        // LÓGICA DE INTERFAZ Y EVENTOS
         const EVENTOS_DEFAULT = ["Oficina del IPS", "Playa San Jose", "Xpo Casa ueno San Bernardino", "Rakiura", "Otros"];
         function cargarEventos() {
             let evs = JSON.parse(localStorage.getItem('listaEventosPY')) || EVENTOS_DEFAULT;
@@ -204,14 +200,12 @@
             }
         }
 
-        // MOTIVOS
         const MOTIVOS = ["Consultas", "Onboarding sin retiro", "Onboarding con retiro", "Solo vinculación", "Activación TC/TD", "Firma CU", "Otro"];
         const cont = document.getElementById('contenedorMotivos');
         MOTIVOS.forEach(m => {
             cont.innerHTML += `<label class="checkbox-item"><input type="checkbox" name="motivoItem" value="${m}"> ${m}</label>`;
         });
 
-        // AUTH
         function cambiarPantalla(p) {
             document.getElementById('loginSection').style.display = 'none';
             document.getElementById('registerSection').style.display = 'none';
@@ -240,12 +234,11 @@
             try {
                 const res = await auth.createUserWithEmailAndPassword(document.getElementById('regEmail').value, p);
                 await res.user.updateProfile({ displayName: document.getElementById('regNombre').value + " " + document.getElementById('regApellido').value });
-                alert("Listo");
+                alert("Cuenta creada.");
             } catch(e) { alert(e.message); }
         };
         function cerrarSesion() { auth.signOut(); location.reload(); }
 
-        // CÁMARA E IA
         async function encenderCamara() {
             const s = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
             document.getElementById('video').srcObject = s;
@@ -268,11 +261,10 @@
             document.getElementById('cameraView').style.display = 'block';
         }
 
-        // GUARDADO (FIREBASE + EXCEL AUTOMÁTICO)
         async function confirmarGuardado() {
             const nom = document.getElementById('resNombre').value;
             const ced = document.getElementById('resCedula').value;
-            if(!nom || !ced || !document.getElementById('checkFisico').checked) return alert("Faltan datos");
+            if(!nom || !ced || !document.getElementById('checkFisico').checked) return alert("Faltan datos o verificación");
 
             const motivos = Array.from(document.querySelectorAll('input[name="motivoItem"]:checked')).map(cb => cb.value).join(' | ');
             
@@ -286,13 +278,9 @@
             };
 
             try {
-                // 1. Firebase
                 await db.collection("escaneos").add(payload);
-                
-                // 2. Google Sheets Automático
                 fetch(URL_GOOGLE, { method: 'POST', mode: 'no-cors', body: JSON.stringify(payload) });
-
-                alert("✅ Guardado en Firebase y Excel.");
+                alert("✅ Registro guardado.");
                 resetEscaneo();
             } catch(e) { alert("Error"); }
         }
@@ -304,7 +292,7 @@
             const ws = XLSX.utils.json_to_sheet(data);
             const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, "Base");
-            XLSX.writeFile(wb, "Reporte.xlsx");
+            XLSX.writeFile(wb, "Reporte_Eventos.xlsx");
         }
     </script>
 </body>
