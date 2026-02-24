@@ -8,8 +8,6 @@
     <link rel="manifest" href="./manifest.json">
     <meta name="theme-color" content="#27ae60">
     <link rel="apple-touch-icon" href="./logo.png">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
@@ -23,84 +21,40 @@
         .card { background: white; width: 100%; max-width: 480px; min-height: 100vh; padding: 20px; text-align: center; box-shadow: 0 0 20px rgba(0,0,0,0.1); box-sizing: border-box; }
         
         .auth-form { display: flex; flex-direction: column; gap: 15px; margin-top: 20px; }
-        input[type="text"], input[type="email"], input[type="password"], input[type="number"], input[type="tel"], select, textarea { 
-            padding: 15px; border-radius: 10px; border: 1px solid #ddd; font-size: 16px; width: 100%; box-sizing: border-box; 
-        }
+        input, select, textarea { padding: 15px; border-radius: 10px; border: 1px solid #ddd; font-size: 16px; width: 100%; box-sizing: border-box; }
         
-        .password-container { position: relative; width: 100%; }
-        .toggle-password { position: absolute; right: 15px; top: 50%; transform: translateY(-50%); cursor: pointer; font-size: 20px; user-select: none; }
-
         .scanner-container { position: relative; width: 100%; border-radius: 15px; overflow: hidden; background: #000; height: 260px; }
         video { width: 100%; height: 100%; object-fit: cover; }
         .overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; box-shadow: inset 0 0 0 45px rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; }
-        .guide-rect { width: 85%; height: 150px; border: 3px solid var(--primary); border-radius: 12px; box-shadow: 0 0 15px var(--primary); }
+        .guide-rect { width: 85%; height: 150px; border: 3px solid var(--primary); border-radius: 12px; }
 
         .btn { background: var(--primary); color: white; border: none; padding: 16px; border-radius: 10px; font-weight: bold; cursor: pointer; width: 100%; font-size: 16px; margin-top: 10px; }
-        .btn-link { background: none; border: none; color: #3498db; cursor: pointer; font-size: 15px; text-decoration: underline; margin-top: 10px; }
-        
         #resultados { margin-top: 20px; background: #fff; padding: 15px; border-radius: 10px; text-align: left; border: 2px solid #3498db; display: none; }
         .label-res { font-size: 12px; color: #34495e; font-weight: bold; margin-bottom: 5px; margin-top: 15px; display: block; text-transform: uppercase; }
-        .editable-input { margin-bottom: 5px; background-color: #fcfcfc; border: 1px solid #bdc3c7; color: var(--dark); }
-        .editable-input:focus { border-color: #3498db; outline: none; background-color: white; }
-
-        .checkbox-group { max-height: 180px; overflow-y: auto; border: 1px solid #bdc3c7; padding: 12px; border-radius: 10px; background: #fcfcfc; margin-bottom: 5px; }
-        .checkbox-item { display: block; margin-bottom: 10px; font-size: 14px; color: #2c3e50; }
-        .checkbox-item input { margin-right: 8px; transform: scale(1.2); }
-
-        .radio-group { display: flex; gap: 20px; padding: 10px 0; font-size: 16px; }
-        .radio-group label { display: flex; align-items: center; gap: 5px; cursor: pointer; }
-        .radio-group input { transform: scale(1.3); }
-
-        .auth-check { background: #fff3cd; padding: 15px; border-radius: 8px; border: 1px solid #ffeeba; margin-top: 20px; display: flex; align-items: flex-start; gap: 10px; text-align: left; font-size: 13px; color: #856404; }
-        .auth-check input { width: 20px; height: 20px; margin-top: 2px; }
-
-        .name-grid { display: flex; gap: 10px; }
         
-        #offlineAlert { display: none; background: #e74c3c; color: white; padding: 10px; border-radius: 8px; font-weight: bold; margin-bottom: 15px; font-size: 13px; }
+        .checkbox-group { max-height: 180px; overflow-y: auto; border: 1px solid #bdc3c7; padding: 12px; border-radius: 10px; background: #fcfcfc; }
+        .checkbox-item { display: block; margin-bottom: 10px; font-size: 14px; }
         
-        .event-container { display: flex; gap: 8px; align-items: center; margin-bottom: 5px; }
-        .event-container select { flex: 1; margin-bottom: 0; }
-        .btn-mini { padding: 15px; border-radius: 10px; border: none; color: white; font-weight: bold; cursor: pointer; font-size: 16px; }
+        .radio-group { display: flex; gap: 20px; padding: 10px 0; }
+        #offlineAlert { display: none; background: #e74c3c; color: white; padding: 10px; border-radius: 8px; margin-bottom: 15px; }
+        
+        .event-container { display: flex; gap: 8px; align-items: center; }
+        .event-container select { flex: 1; }
+        .btn-mini { padding: 15px; border-radius: 10px; border: none; color: white; font-weight: bold; cursor: pointer; }
     </style>
 </head>
 <body>
 
     <div class="card">
-        
-        <div id="offlineAlert">⚠️ Sin conexión a Internet. Los datos se guardarán en el celular y se subirán al volver la señal.</div>
+        <div id="offlineAlert">⚠️ Sin conexión. Los datos se sincronizarán al volver el internet.</div>
 
         <div id="loginSection">
             <h2>Ingreso al Sistema</h2>
             <form class="auth-form" id="loginForm">
-                <input type="email" id="email" name="email" placeholder="Correo electrónico" autocomplete="username" required>
-                <div class="password-container">
-                    <input type="password" id="password" name="password" placeholder="Contraseña" autocomplete="current-password" required>
-                    <span class="toggle-password" onclick="mostrarOcultarClave('password', 'ojoLogin')"><span id="ojoLogin">👁️</span></span>
-                </div>
+                <input type="email" id="email" placeholder="Correo electrónico" required>
+                <input type="password" id="password" placeholder="Contraseña" required>
                 <button type="submit" class="btn">INGRESAR</button>
             </form>
-            <button class="btn-link" onclick="cambiarPantalla('registerSection')">¿No tienes cuenta? Regístrate aquí</button>
-        </div>
-
-        <div id="registerSection" style="display: none;">
-            <h2>Crear Cuenta</h2>
-            <form class="auth-form" id="registerForm">
-                <div class="name-grid">
-                    <input type="text" id="regNombre" name="given-name" placeholder="Nombre" required>
-                    <input type="text" id="regApellido" name="family-name" placeholder="Apellido" required>
-                </div>
-                <input type="email" id="regEmail" name="email" placeholder="Correo electrónico" autocomplete="username" required>
-                <div class="password-container">
-                    <input type="password" id="regPassword" name="new-password" placeholder="Contraseña (mín. 6 letras)" autocomplete="new-password" required>
-                    <span class="toggle-password" onclick="mostrarOcultarClave('regPassword', 'ojoReg1')"><span id="ojoReg1">👁️</span></span>
-                </div>
-                <div class="password-container">
-                    <input type="password" id="regConfirmPassword" name="new-password-confirm" placeholder="Confirme su contraseña" autocomplete="new-password" required>
-                    <span class="toggle-password" onclick="mostrarOcultarClave('regConfirmPassword', 'ojoReg2')"><span id="ojoReg2">👁️</span></span>
-                </div>
-                <button type="submit" class="btn" style="background: #3498db;">REGISTRARME</button>
-            </form>
-            <button class="btn-link" style="color: #27ae60;" onclick="cambiarPantalla('loginSection')">¿Ya tienes cuenta? Inicia sesión</button>
         </div>
 
         <div id="scannerSection" style="display: none;">
@@ -112,31 +66,29 @@
                 <button class="btn" onclick="capturarCedula()">📷 CAPTURAR DATOS DEL CLIENTE</button>
             </div>
 
-            <div id="loading" style="display:none; margin: 20px; font-weight: bold; color: var(--primary);">⌛ PROCESANDO...</div>
+            <div id="loading" style="display:none; padding: 20px; font-weight: bold; color: var(--primary);">⌛ PROCESANDO...</div>
 
             <div id="resultados">
-                <p style="font-size: 13px; color: #e67e22; margin-top:0; text-align:center;"><strong>Complete el Formulario de Atención</strong></p>
-                
                 <label class="label-res">NOMBRE Y APELLIDO *:</label>
-                <input type="text" id="resNombre" class="editable-input" style="font-weight: bold;">
+                <input type="text" id="resNombre">
                 
                 <label class="label-res">NÚMERO DE CÉDULA *:</label>
-                <input type="number" id="resCedula" class="editable-input" style="font-weight: bold;">
+                <input type="number" id="resCedula">
 
                 <label class="label-res">NÚMERO DE CELULAR *:</label>
-                <input type="tel" id="resCelular" class="editable-input" placeholder="Ej: 0981 123 456">
+                <input type="tel" id="resCelular" placeholder="Ej: 0981 123 456">
 
                 <hr style="border: 0.5px solid #eee; margin: 20px 0;">
 
                 <label class="label-res">NOMBRE DEL EVENTO *:</label>
                 <div class="event-container">
-                    <select id="resEvento" class="editable-input"></select>
-                    <button type="button" class="btn-mini" style="background: #3498db;" onclick="agregarEvento()" title="Agregar nuevo evento">➕</button>
-                    <button type="button" class="btn-mini" style="background: #e74c3c;" onclick="eliminarEvento()" title="Eliminar evento seleccionado">🗑️</button>
+                    <select id="resEvento"></select>
+                    <button class="btn-mini" style="background: #3498db;" onclick="agregarEvento()">➕</button>
+                    <button class="btn-mini" style="background: #e74c3c;" onclick="eliminarEvento()">🗑️</button>
                 </div>
 
                 <label class="label-res">CORREO ELECTRÓNICO (CLIENTE):</label>
-                <input type="email" id="resCorreoCliente" class="editable-input" placeholder="ejemplo@correo.com">
+                <input type="email" id="resCorreoCliente" placeholder="ejemplo@correo.com">
 
                 <label class="label-res">¿ACTIVÓ UN PRODUCTO NUEVO? *</label>
                 <div class="radio-group">
@@ -144,108 +96,36 @@
                     <label><input type="radio" name="resProducto" value="No" checked> No</label>
                 </div>
 
-                <label class="label-res">MOTIVO DE ATENCIÓN * (Seleccione uno o varios):</label>
+                <label class="label-res">MOTIVO DE ATENCIÓN *:</label>
                 <div class="checkbox-group" id="contenedorMotivos"></div>
 
-                <label class="label-res">NÚMERO DE CÓDIGO DE TARJETA (CAJA):</label>
-                <input type="text" id="resCodigoTarjeta" class="editable-input" placeholder="Ingrese el código">
+                <label class="label-res">CÓDIGO DE TARJETA (CAJA):</label>
+                <input type="text" id="resCodigoTarjeta">
 
                 <label class="label-res">COMENTARIO ADICIONAL:</label>
-                <textarea id="resComentario" class="editable-input" rows="3" placeholder="Escriba aquí sus observaciones..."></textarea>
+                <textarea id="resComentario" rows="3"></textarea>
 
-                <div class="auth-check">
-                    <input type="checkbox" id="checkFisico">
-                    <label for="checkFisico"><strong>Verificación:</strong> Confirmo que el cliente presentó el documento original.</label>
-                </div>
-                
                 <div style="display: flex; gap: 10px; margin-top: 15px;">
                     <button class="btn" style="flex: 2;" onclick="confirmarGuardado()">✅ GUARDAR REGISTRO</button>
-                    <button class="btn" style="flex: 1; background: #e74c3c;" onclick="resetEscaneo()">🔄 DESCARTAR</button>
+                    <button class="btn" style="flex: 1; background: #e74c3c;" onclick="resetEscaneo()">🔄</button>
                 </div>
             </div>
 
-            <button onclick="exportarExcel()" style="background:#34495e; color:white; border:none; padding:12px; margin-top:40px; border-radius:8px; width:100%;">📊 DESCARGAR EXCEL COMPLETO</button>
-            <p style="font-size: 12px; color: #7f8c8d; margin-top: 20px; font-weight: bold;" id="userEmailDisplay"></p>
-            <button onclick="cerrarSesion()" style="background: none; border: none; color: #e74c3c; cursor: pointer; text-decoration: underline; margin-bottom: 20px;">Cerrar Sesión</button>
+            <button onclick="exportarExcel()" style="background:#34495e; color:white; border:none; padding:12px; margin-top:40px; border-radius:8px; width:100%;">📊 DESCARGAR EXCEL</button>
+            <p id="userEmailDisplay" style="font-size: 12px; font-weight: bold; margin-top: 15px;"></p>
+            <button onclick="auth.signOut(); location.reload();" style="background:none; border:none; color:red; text-decoration:underline; cursor:pointer;">Cerrar Sesión</button>
         </div>
     </div>
 
     <canvas id="canvas" style="display:none;"></canvas>
 
     <script>
-        // REGISTRO DEL SERVICE WORKER PARA QUE LA APP SE INSTALE Y FUNCIONE OFFLINE
+        // SERVICE WORKER
         if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('./sw.js')
-                .then(reg => console.log('¡Modo App Offline Activado!', reg))
-                .catch(err => console.log('Error al activar Modo App', err));
-            });
+            navigator.serviceWorker.register('./sw.js').then(() => console.log("PWA lista"));
         }
 
-        // EVENTOS DINÁMICOS
-        const EVENTOS_DEFAULT = ["Oficina del IPS", "Playa San Jose", "Xpo Casa ueno San Bernardino", "Rakiura", "Otros"];
-
-        function cargarEventos() {
-            let eventosGuardados = JSON.parse(localStorage.getItem('listaEventosPY')) || EVENTOS_DEFAULT;
-            const select = document.getElementById('resEvento');
-            select.innerHTML = '<option value="">Seleccionar...</option>';
-            eventosGuardados.forEach(ev => {
-                let opt = document.createElement('option');
-                opt.value = ev; opt.innerText = ev;
-                select.appendChild(opt);
-            });
-        }
-
-        function agregarEvento() {
-            let nuevoEvento = prompt("Ingrese el nombre del nuevo evento o sucursal:");
-            if (nuevoEvento && nuevoEvento.trim() !== "") {
-                let eventosGuardados = JSON.parse(localStorage.getItem('listaEventosPY')) || EVENTOS_DEFAULT;
-                if(!eventosGuardados.includes(nuevoEvento.trim())) {
-                    eventosGuardados.push(nuevoEvento.trim());
-                    localStorage.setItem('listaEventosPY', JSON.stringify(eventosGuardados));
-                    cargarEventos();
-                    document.getElementById('resEvento').value = nuevoEvento.trim();
-                } else { alert("Ese evento ya existe."); }
-            }
-        }
-
-        function eliminarEvento() {
-            let select = document.getElementById('resEvento');
-            let valorAEliminar = select.value;
-            if (!valorAEliminar) return alert("Seleccione un evento de la lista para eliminarlo.");
-            if (confirm("¿Eliminar '" + valorAEliminar + "'?")) {
-                let eventosGuardados = JSON.parse(localStorage.getItem('listaEventosPY')) || EVENTOS_DEFAULT;
-                eventosGuardados = eventosGuardados.filter(ev => ev !== valorAEliminar);
-                localStorage.setItem('listaEventosPY', JSON.stringify(eventosGuardados));
-                cargarEventos();
-            }
-        }
-        cargarEventos();
-
-        // MOTIVOS DE ATENCIÓN
-        const listaMotivos = [
-            "Consultas (especificar en comentario adicional)", "Onboarding sin retiro de tarjeta", "Onboarding con retiro de tarjetas",
-            "Solo vinculación de tarjeta (Ingresar el numero sobre)", "Activación de TC y TD", "Firma de CU", "TC Albirroja nueva",
-            "Error al vincular la tarjeta", "Inconveniente con el registro en la App - Contactar", "Solicitud de oferta TC denegada",
-            "Solicitud oferta Préstamo - Contactar", "Activación cuenta menor", "Reimpresión de tarjeta", "Reimpresión TC Albirroja",
-            "Alta de ahorro programado", "Reclamos sobre productos - Contactar", "Solicitud de oferta de TC", "Solicitud de aumento de linea de TC",
-            "Error al ingresar en la app", "Vinculación de Alias", "Actualización de Fé de vida", "Cambio de entidad bancaria de jubilados",
-            "Nuevo Jubilado", "Otro"
-        ];
-        
-        const contenedor = document.getElementById('contenedorMotivos');
-        listaMotivos.forEach(motivo => {
-            const label = document.createElement('label');
-            label.className = 'checkbox-item';
-            label.innerHTML = `<input type="checkbox" name="motivoItem" value="${motivo}"> ${motivo}`;
-            contenedor.appendChild(label);
-        });
-
-        // DETECCIÓN DE INTERNET
-        window.addEventListener('online', () => document.getElementById('offlineAlert').style.display = 'none');
-        window.addEventListener('offline', () => document.getElementById('offlineAlert').style.display = 'block');
-
-        // FIREBASE CONFIG
+        // --- CONFIGURACIÓN ---
         const firebaseConfig = {
             apiKey: "AIzaSyAE1KBu1CufjKO65OpVHOPcmhyliQYsoDU",
             authDomain: "miescanerweb.firebaseapp.com",
@@ -257,98 +137,83 @@
         firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
         const db = firebase.firestore();
+        db.enablePersistence();
 
-        db.enablePersistence().catch(err => console.log("Offline mode err: ", err.code));
+        // 🟢 TU ENLACE DE GOOGLE SHEETS YA CONFIGURADO:
+        const URL_GOOGLE_SHEETS = 'https://script.google.com/a/macros/ueno.com.py/s/AKfycbyp50uQF0KAQPWCBh_lwxDwlBEVPd9DXZLkQu5_2NrY15yfQc7Hjg4JljQTNoEkKzSBsA/exec';
 
-        function cambiarPantalla(pantalla) {
-            document.getElementById('loginSection').style.display = 'none';
-            document.getElementById('registerSection').style.display = 'none';
-            document.getElementById(pantalla).style.display = 'block';
+        const MOTIVOS = [
+            "-Consultas", "-Onboarding sin retiro", "-Onboarding con retiro", "-Solo vinculación",
+            "-Activación TC/TD", "-Firma CU", "-TC Albirroja nueva", "-Error vinculación",
+            "-Inconveniente Registro", "-Oferta TC denegada", "-Oferta Préstamo", "-Cuenta menor",
+            "-Reimpresión tarjeta", "-Reimpresión Albirroja", "-Ahorro programado", "-Reclamos",
+            "-Solicitud TC", "-Aumento línea", "-Error app", "-Vinculación Alias",
+            "-Fé de vida", "-Cambio entidad jubilados", "-Nuevo Jubilado", "-Otro"
+        ];
+
+        // LOGICA DE INTERFAZ
+        function cargarOpciones() {
+            const evSel = document.getElementById('resEvento');
+            const evs = JSON.parse(localStorage.getItem('listaEventosPY')) || ["IPS", "Playa San Jose", "Rakiura"];
+            evSel.innerHTML = '<option value="">Seleccionar...</option>';
+            evs.forEach(e => evSel.innerHTML += `<option value="${e}">${e}</option>`);
+
+            const motCont = document.getElementById('contenedorMotivos');
+            motCont.innerHTML = "";
+            MOTIVOS.forEach(m => {
+                motCont.innerHTML += `<label class="checkbox-item"><input type="checkbox" name="motivoItem" value="${m}"> ${m}</label>`;
+            });
         }
 
-        function mostrarOcultarClave(inputId, iconId) {
-            const input = document.getElementById(inputId);
-            const icon = document.getElementById(iconId);
-            if (input.type === "password") { input.type = "text"; icon.innerText = "🙈"; } 
-            else { input.type = "password"; icon.innerText = "👁️"; }
+        function agregarEvento() {
+            let n = prompt("Nuevo evento:");
+            if(n) {
+                let evs = JSON.parse(localStorage.getItem('listaEventosPY')) || ["IPS", "Playa San Jose", "Rakiura"];
+                evs.push(n);
+                localStorage.setItem('listaEventosPY', JSON.stringify(evs));
+                cargarOpciones();
+            }
         }
 
-        document.getElementById('registerForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const nom = document.getElementById('regNombre').value.trim();
-            const ape = document.getElementById('regApellido').value.trim();
-            const email = document.getElementById('regEmail').value.trim();
-            const pass = document.getElementById('regPassword').value;
-            if(pass !== document.getElementById('regConfirmPassword').value) return alert("❌ Las contraseñas no coinciden.");
+        function eliminarEvento() {
+            let s = document.getElementById('resEvento');
+            if(!s.value) return;
+            let evs = JSON.parse(localStorage.getItem('listaEventosPY')).filter(e => e !== s.value);
+            localStorage.setItem('listaEventosPY', JSON.stringify(evs));
+            cargarOpciones();
+        }
 
-            try {
-                const userCred = await auth.createUserWithEmailAndPassword(email, pass);
-                await userCred.user.updateProfile({ displayName: nom + " " + ape });
-                alert("✅ ¡Cuenta creada! Bienvenido(a)");
-            } catch (err) { alert("Error: " + err.message); }
-        });
-
-        document.getElementById('loginForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            try { await auth.signInWithEmailAndPassword(document.getElementById('email').value, document.getElementById('password').value); } 
-            catch (err) { alert("❌ Correo o contraseña incorrectos."); }
-        });
-
-        function cerrarSesion() { auth.signOut(); window.location.reload(); }
-
+        // AUTH
         auth.onAuthStateChanged(user => {
             if (user) {
                 document.getElementById('loginSection').style.display = 'none';
-                document.getElementById('registerSection').style.display = 'none';
                 document.getElementById('scannerSection').style.display = 'block';
-                document.getElementById('userEmailDisplay').innerText = "👤 Operador: " + (user.displayName || user.email);
+                document.getElementById('userEmailDisplay').innerText = "👤 Operador: " + user.email;
                 encenderCamara();
+                cargarOpciones();
             }
         });
 
+        document.getElementById('loginForm').onsubmit = e => {
+            e.preventDefault();
+            auth.signInWithEmailAndPassword(document.getElementById('email').value, document.getElementById('password').value);
+        };
+
+        // CÁMARA E IA
         async function encenderCamara() {
-            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment", width: { ideal: 1280 } } });
-            document.getElementById('video').srcObject = stream;
+            const s = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+            document.getElementById('video').srcObject = s;
         }
 
         async function capturarCedula() {
             document.getElementById('cameraView').style.display = 'none';
             document.getElementById('loading').style.display = 'block';
-            
             const v = document.getElementById('video');
             const c = document.getElementById('canvas');
-            const ctx = c.getContext('2d');
-            
             c.width = v.videoWidth; c.height = v.videoHeight;
-            ctx.drawImage(v, 0, 0, c.width, c.height);
-            
-            const res = await Tesseract.recognize(c.toDataURL('image/png'), 'spa');
-            const txt = res.data.text.toUpperCase();
-            const lineas = txt.split('\n').map(l => l.trim()).filter(l => l.length > 2);
-
-            const textoSinPuntos = txt.replace(/\D+/g, ' ').trim().split(' ');
-            let cedulaFinal = "";
-            for (let num of textoSinPuntos) {
-                if (num.length >= 6 && num.length <= 8) { cedulaFinal = num; break; }
-            }
-
-            let apellidos = "", nombres = "";
-            for(let i = 0; i < lineas.length; i++) {
-                if(/APELL|PELL|APEL/.test(lineas[i]) && lineas[i+1]) apellidos = lineas[i+1].replace(/[^A-ZÑ\s]/g, '').trim();
-                if(/NOMB|NONB|NOMBRE/.test(lineas[i]) && lineas[i+1]) nombres = lineas[i+1].replace(/[^A-ZÑ\s]/g, '').trim();
-            }
-
-            document.getElementById('resNombre').value = (apellidos + " " + nombres).trim();
-            document.getElementById('resCedula').value = cedulaFinal;
-            
-            document.getElementById('resCelular').value = ""; 
-            document.getElementById('resCorreoCliente').value = ""; 
-            document.querySelector('input[name="resProducto"][value="No"]').checked = true;
-            document.querySelectorAll('input[name="motivoItem"]').forEach(cb => cb.checked = false);
-            document.getElementById('resCodigoTarjeta').value = ""; 
-            document.getElementById('resComentario').value = ""; 
-            document.getElementById('checkFisico').checked = false; 
-
+            c.getContext('2d').drawImage(v, 0, 0);
+            const res = await Tesseract.recognize(c.toDataURL(), 'spa');
+            document.getElementById('resCedula').value = res.data.text.replace(/\D/g, '').substring(0,8);
             document.getElementById('loading').style.display = 'none';
             document.getElementById('resultados').style.display = 'block';
         }
@@ -358,118 +223,53 @@
             document.getElementById('cameraView').style.display = 'block';
         }
 
+        // GUARDADO (FIREBASE + GOOGLE SHEETS)
         async function confirmarGuardado() {
-            const nom = document.getElementById('resNombre').value.trim();
-            const ced = document.getElementById('resCedula').value.trim();
-            const cel = document.getElementById('resCelular').value.trim();
-            const evento = document.getElementById('resEvento').value;
+            const nom = document.getElementById('resNombre').value;
+            const ced = document.getElementById('resCedula').value;
+            if(!nom || !ced) return alert("Nombre y Cédula obligatorios");
+
+            const motivos = Array.from(document.querySelectorAll('input[name="motivoItem"]:checked')).map(cb => cb.value).join(' | ');
             
-            const checksMotivos = document.querySelectorAll('input[name="motivoItem"]:checked');
-            const motivosSeleccionados = Array.from(checksMotivos).map(cb => cb.value).join(' | ');
+            const payload = {
+                fecha: new Date().toLocaleString(),
+                operador: auth.currentUser.email,
+                evento: document.getElementById('resEvento').value,
+                nombre: nom,
+                cedula: ced,
+                celular: document.getElementById('resCelular').value,
+                correo: document.getElementById('resCorreoCliente').value,
+                producto: document.querySelector('input[name="resProducto"]:checked').value,
+                motivos: motivos,
+                codigo: document.getElementById('resCodigoTarjeta').value,
+                comentario: document.getElementById('resComentario').value
+            };
 
-            if(nom === "" || ced === "") return alert("⚠️ El Nombre y la Cédula son obligatorios.");
-            if(cel === "") return alert("⚠️ El Número de Celular es obligatorio.");
-            if(evento === "") return alert("⚠️ Debe seleccionar el Nombre del evento.");
-            if(checksMotivos.length === 0) return alert("⚠️ Debe marcar al menos un Motivo de atención.");
-            if(!document.getElementById('checkFisico').checked) return alert("⚠️ Marque la casilla confirmando que revisó el documento.");
+            // 1. Guardar en Firebase (Offline Ready)
+            await db.collection("escaneos").add(payload);
 
-            const correoCliente = document.getElementById('resCorreoCliente').value.trim();
-            const productoNuevo = document.querySelector('input[name="resProducto"]:checked').value;
-            const codigoTarjeta = document.getElementById('resCodigoTarjeta').value.trim();
-            const comentario = document.getElementById('resComentario').value.trim();
-            const operador = auth.currentUser.displayName || auth.currentUser.email;
-
-            try {
-                await db.collection("escaneos").add({
-                    nombre_cedula: nom, 
-                    numero_cedula: ced, 
-                    celular_cliente: cel,
-                    evento: evento,
-                    correo_cliente: correoCliente || "Sin correo",
-                    producto_nuevo: productoNuevo,
-                    motivos: motivosSeleccionados,
-                    codigo_tarjeta: codigoTarjeta || "N/A",
-                    comentarios: comentario || "Sin comentarios",
-                    fecha: new Date().toLocaleString(), 
-                    operador_sistema: operador
+            // 2. Enviar a Google Sheets (Si hay internet)
+            if(navigator.onLine && URL_GOOGLE_SHEETS.includes('exec')) {
+                fetch(URL_GOOGLE_SHEETS, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    body: JSON.stringify(payload)
                 });
-                
-                if (!navigator.onLine) { alert("✅ Guardado localmente. (Se subirá al volver el internet)"); } 
-                else { alert("✅ Formulario guardado en la nube."); }
-                resetEscaneo();
-
-            } catch(error) { alert("Error al guardar: " + error.message); }
-        }
-
-        async function exportarExcel() {
-            if (!navigator.onLine) {
-                return alert("⚠️ Necesitas conexión a internet para descargar el Excel completo.");
             }
 
-            alert("Generando Excel... Esto puede tomar unos segundos.");
+            alert("✅ Registro guardado con éxito.");
+            resetEscaneo();
+        }
+
+        // EXCEL LOCAL
+        async function exportarExcel() {
             const snap = await db.collection("escaneos").get();
-            
-            const rawData = [];
-            let maxMotivos = 0;
-            
-            snap.forEach(doc => {
-                const data = doc.data();
-                let arrayMotivos = [];
-                if (data.motivos) {
-                    arrayMotivos = data.motivos.split(' | ').filter(m => m.trim() !== "");
-                }
-                if (arrayMotivos.length > maxMotivos) { maxMotivos = arrayMotivos.length; }
-                
-                data._arrayMotivos = arrayMotivos; 
-                rawData.push(data);
-            });
-            
-            const registrosOrdenados = []; 
-            
-            rawData.forEach(data => {
-                let fechaCorta = data.fecha || "Sin fecha", horaCorta = "";
-                if(data.fecha && data.fecha.includes(',')) {
-                    let partes = data.fecha.split(',');
-                    fechaCorta = partes[0].trim(); horaCorta = partes[1].trim();
-                } else if (data.fecha && data.fecha.includes(' ')) {
-                    let partes = data.fecha.split(' ');
-                    fechaCorta = partes[0].trim(); horaCorta = partes[1].trim();
-                }
-
-                let filaExcel = {
-                    "Fecha": fechaCorta, "Hora": horaCorta,
-                    "Evento / Sucursal": data.evento || "---",
-                    "Nombre y Apellido": data.nombre_cedula || data.nombre || "---",
-                    "Nro. de Cédula": data.numero_cedula || data.cedula || "---",
-                    "Celular Cliente": data.celular_cliente || "---",
-                    "Correo Cliente": data.correo_cliente || "---",
-                    "¿Producto Nuevo?": data.producto_nuevo || "---"
-                };
-                
-                for (let i = 0; i < maxMotivos; i++) {
-                    filaExcel[`Motivo ${i + 1}`] = data._arrayMotivos[i] || "---";
-                }
-                
-                filaExcel["Cód. Tarjeta (Caja)"] = data.codigo_tarjeta || "---";
-                filaExcel["Comentarios"] = data.comentarios || "---";
-                filaExcel["Operador"] = data.operador_sistema || data.usuario || "---";
-                
-                registrosOrdenados.push(filaExcel);
-            });
-
-            const ws = XLSX.utils.json_to_sheet(registrosOrdenados);
+            const filas = [];
+            snap.forEach(doc => filas.push(doc.data()));
+            const ws = XLSX.utils.json_to_sheet(filas);
             const wb = XLSX.utils.book_new();
-            
-            let anchosColumnas = [ 
-                { wch: 12 }, { wch: 10 }, { wch: 25 }, { wch: 30 }, 
-                { wch: 15 }, { wch: 15 }, { wch: 25 }, { wch: 18 } 
-            ];
-            for (let i = 0; i < maxMotivos; i++) { anchosColumnas.push({ wch: 35 }); }
-            anchosColumnas.push({ wch: 20 }, { wch: 45 }, { wch: 25 });
-            
-            ws['!cols'] = anchosColumnas;
-            XLSX.utils.book_append_sheet(wb, ws, "Base de Datos");
-            XLSX.writeFile(wb, "Reporte_CRM_Desglosado.xlsx");
+            XLSX.utils.book_append_sheet(wb, ws, "Datos");
+            XLSX.writeFile(wb, "Reporte_Eventos.xlsx");
         }
     </script>
 </body>
