@@ -4,128 +4,79 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sistema de Gestión PY</title>
-    
-    <link rel="manifest" href="./manifest.json">
-    <meta name="theme-color" content="#27ae60">
-    <link rel="apple-touch-icon" href="./logo.png">
-    
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-
     <style>
-        :root { --primary: #27ae60; --dark: #2c3e50; }
+        :root { --primary: #27ae60; --blue: #3498db; }
         body { font-family: 'Segoe UI', sans-serif; background: #f4f7f6; margin: 0; display: flex; justify-content: center; }
-        .card { background: white; width: 100%; max-width: 480px; min-height: 100vh; padding: 20px; text-align: center; box-shadow: 0 0 20px rgba(0,0,0,0.1); box-sizing: border-box; }
+        .card { background: white; width: 100%; max-width: 480px; min-height: 100vh; padding: 20px; box-sizing: border-box; text-align: center; }
         
-        .auth-form { display: flex; flex-direction: column; gap: 15px; margin-top: 20px; }
-        input, select, textarea { padding: 15px; border-radius: 10px; border: 1px solid #ddd; font-size: 16px; width: 100%; box-sizing: border-box; }
+        h2 { font-weight: bold; margin-bottom: 30px; font-size: 28px; }
+        .auth-form { display: flex; flex-direction: column; gap: 15px; }
+        .row { display: flex; gap: 10px; }
+        .input-group { position: relative; width: 100%; }
+        input { padding: 15px; border-radius: 10px; border: 1px solid #ddd; font-size: 16px; width: 100%; box-sizing: border-box; background: #fff; }
         
-        .scanner-container { position: relative; width: 100%; border-radius: 15px; overflow: hidden; background: #000; height: 260px; }
-        video { width: 100%; height: 100%; object-fit: cover; }
-        .overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; box-shadow: inset 0 0 0 45px rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; }
-        .guide-rect { width: 85%; height: 150px; border: 3px solid var(--primary); border-radius: 12px; }
+        .eye-icon { position: absolute; right: 15px; top: 50%; transform: translateY(-50%); cursor: pointer; font-size: 20px; }
+        
+        .btn { background: var(--primary); color: white; border: none; padding: 18px; border-radius: 12px; font-weight: bold; cursor: pointer; width: 100%; font-size: 18px; text-transform: uppercase; margin-top: 10px; }
+        .btn-reg { background: var(--blue); }
+        .link-auth { color: var(--blue); text-decoration: underline; cursor: pointer; display: inline-block; margin-top: 20px; font-size: 15px; }
 
-        .btn { background: var(--primary); color: white; border: none; padding: 16px; border-radius: 10px; font-weight: bold; cursor: pointer; width: 100%; font-size: 16px; margin-top: 10px; }
-        #resultados { margin-top: 20px; background: #fff; padding: 15px; border-radius: 10px; text-align: left; border: 2px solid #3498db; display: none; }
-        .label-res { font-size: 12px; color: #34495e; font-weight: bold; margin-bottom: 5px; margin-top: 15px; display: block; text-transform: uppercase; }
-        
-        .checkbox-group { max-height: 180px; overflow-y: auto; border: 1px solid #bdc3c7; padding: 12px; border-radius: 10px; background: #fcfcfc; }
-        .checkbox-item { display: block; margin-bottom: 10px; font-size: 14px; }
-        
-        .radio-group { display: flex; gap: 20px; padding: 10px 0; }
-        #offlineAlert { display: none; background: #e74c3c; color: white; padding: 10px; border-radius: 8px; margin-bottom: 15px; }
-        
-        .event-container { display: flex; gap: 8px; align-items: center; }
-        .event-container select { flex: 1; }
-        .btn-mini { padding: 15px; border-radius: 10px; border: none; color: white; font-weight: bold; cursor: pointer; }
+        /* Estilos del escáner y resultados */
+        #scannerSection { display: none; }
+        #resultados { text-align: left; background: #fff; padding: 15px; border-radius: 10px; border: 2px solid var(--blue); margin-top: 20px; }
     </style>
 </head>
 <body>
 
     <div class="card">
-        <div id="offlineAlert">⚠️ Sin conexión. Los datos se sincronizarán al volver el internet.</div>
-
-        <div id="loginSection">
-            <h2>Ingreso al Sistema</h2>
+        <div id="loginBox">
+            <h2 style="margin-top: 60px;">Ingreso al Sistema</h2>
             <form class="auth-form" id="loginForm">
                 <input type="email" id="email" placeholder="Correo electrónico" required>
-                <input type="password" id="password" placeholder="Contraseña" required>
+                <div class="input-group">
+                    <input type="password" id="password" placeholder="Contraseña" required>
+                    <span class="eye-icon" onclick="toggleView('password')">👁️</span>
+                </div>
                 <button type="submit" class="btn">INGRESAR</button>
             </form>
+            <a class="link-auth" onclick="showRegister(true)">¿No tienes cuenta? Regístrate aquí</a>
         </div>
 
-        <div id="scannerSection" style="display: none;">
-            <div id="cameraView">
-                <div class="scanner-container">
-                    <video id="video" autoplay playsinline></video>
-                    <div class="overlay"><div class="guide-rect"></div></div>
+        <div id="registerBox" style="display: none;">
+            <h2 style="margin-top: 60px;">Crear Cuenta</h2>
+            <form class="auth-form" id="registerForm">
+                <div class="row">
+                    <input type="text" id="regNombre" placeholder="Nombre" required>
+                    <input type="text" id="regApellido" placeholder="Apellido" required>
                 </div>
-                <button class="btn" onclick="capturarCedula()">📷 CAPTURAR DATOS DEL CLIENTE</button>
-            </div>
-
-            <div id="loading" style="display:none; padding: 20px; font-weight: bold; color: var(--primary);">⌛ PROCESANDO...</div>
-
-            <div id="resultados">
-                <label class="label-res">NOMBRE Y APELLIDO *:</label>
-                <input type="text" id="resNombre">
-                
-                <label class="label-res">NÚMERO DE CÉDULA *:</label>
-                <input type="number" id="resCedula">
-
-                <label class="label-res">NÚMERO DE CELULAR *:</label>
-                <input type="tel" id="resCelular" placeholder="Ej: 0981 123 456">
-
-                <hr style="border: 0.5px solid #eee; margin: 20px 0;">
-
-                <label class="label-res">NOMBRE DEL EVENTO *:</label>
-                <div class="event-container">
-                    <select id="resEvento"></select>
-                    <button class="btn-mini" style="background: #3498db;" onclick="agregarEvento()">➕</button>
-                    <button class="btn-mini" style="background: #e74c3c;" onclick="eliminarEvento()">🗑️</button>
+                <input type="email" id="regEmail" placeholder="Correo electrónico" required>
+                <div class="input-group">
+                    <input type="password" id="regPass" placeholder="Contraseña (mín. 6 letras)" required>
+                    <span class="eye-icon" onclick="toggleView('regPass')">👁️</span>
                 </div>
-
-                <label class="label-res">CORREO ELECTRÓNICO (CLIENTE):</label>
-                <input type="email" id="resCorreoCliente" placeholder="ejemplo@correo.com">
-
-                <label class="label-res">¿ACTIVÓ UN PRODUCTO NUEVO? *</label>
-                <div class="radio-group">
-                    <label><input type="radio" name="resProducto" value="SI"> SI</label>
-                    <label><input type="radio" name="resProducto" value="No" checked> No</label>
+                <div class="input-group">
+                    <input type="password" id="regPassConf" placeholder="Confirme su contraseña" required>
+                    <span class="eye-icon" onclick="toggleView('regPassConf')">👁️</span>
                 </div>
-
-                <label class="label-res">MOTIVO DE ATENCIÓN *:</label>
-                <div class="checkbox-group" id="contenedorMotivos"></div>
-
-                <label class="label-res">CÓDIGO DE TARJETA (CAJA):</label>
-                <input type="text" id="resCodigoTarjeta">
-
-                <label class="label-res">COMENTARIO ADICIONAL:</label>
-                <textarea id="resComentario" rows="3"></textarea>
-
-                <div style="display: flex; gap: 10px; margin-top: 15px;">
-                    <button class="btn" style="flex: 2;" onclick="confirmarGuardado()">✅ GUARDAR REGISTRO</button>
-                    <button class="btn" style="flex: 1; background: #e74c3c;" onclick="resetEscaneo()">🔄</button>
-                </div>
-            </div>
-
-            <button onclick="exportarExcel()" style="background:#34495e; color:white; border:none; padding:12px; margin-top:40px; border-radius:8px; width:100%;">📊 DESCARGAR EXCEL</button>
-            <p id="userEmailDisplay" style="font-size: 12px; font-weight: bold; margin-top: 15px;"></p>
-            <button onclick="auth.signOut(); location.reload();" style="background:none; border:none; color:red; text-decoration:underline; cursor:pointer;">Cerrar Sesión</button>
+                <button type="submit" class="btn btn-reg">REGISTRARME</button>
+            </form>
+            <a class="link-auth" style="color: #27ae60;" onclick="showRegister(false)">¿Ya tienes cuenta? Inicia sesión</a>
         </div>
+
+        <div id="scannerSection">
+            <h3 id="welcomeMsg"></h3>
+            <div style="background:#000; height:260px; border-radius:15px; overflow:hidden;">
+                <video id="video" autoplay playsinline style="width:100%; height:100%; object-fit:cover;"></video>
+            </div>
+            <button class="btn" onclick="capturarCedula()">📷 CAPTURAR DATOS</button>
+            </div>
     </div>
 
-    <canvas id="canvas" style="display:none;"></canvas>
-
     <script>
-        // SERVICE WORKER
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('./sw.js').then(() => console.log("PWA lista"));
-        }
-
-        // --- CONFIGURACIÓN ---
         const firebaseConfig = {
             apiKey: "AIzaSyAE1KBu1CufjKO65OpVHOPcmhyliQYsoDU",
             authDomain: "miescanerweb.firebaseapp.com",
@@ -137,140 +88,48 @@
         firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
         const db = firebase.firestore();
-        db.enablePersistence();
 
-        // 🟢 TU ENLACE DE GOOGLE SHEETS YA CONFIGURADO:
-        const URL_GOOGLE_SHEETS = 'https://script.google.com/a/macros/ueno.com.py/s/AKfycbyp50uQF0KAQPWCBh_lwxDwlBEVPd9DXZLkQu5_2NrY15yfQc7Hjg4JljQTNoEkKzSBsA/exec';
+        // TU LINK DE GOOGLE SHEETS
+        const URL_EXCEL = 'https://script.google.com/a/macros/ueno.com.py/s/AKfycbyp50uQF0KAQPWCBh_lwxDwlBEVPd9DXZLkQu5_2NrY15yfQc7Hjg4JljQTNoEkKzSBsA/exec';
 
-        const MOTIVOS = [
-            "-Consultas", "-Onboarding sin retiro", "-Onboarding con retiro", "-Solo vinculación",
-            "-Activación TC/TD", "-Firma CU", "-TC Albirroja nueva", "-Error vinculación",
-            "-Inconveniente Registro", "-Oferta TC denegada", "-Oferta Préstamo", "-Cuenta menor",
-            "-Reimpresión tarjeta", "-Reimpresión Albirroja", "-Ahorro programado", "-Reclamos",
-            "-Solicitud TC", "-Aumento línea", "-Error app", "-Vinculación Alias",
-            "-Fé de vida", "-Cambio entidad jubilados", "-Nuevo Jubilado", "-Otro"
-        ];
-
-        // LOGICA DE INTERFAZ
-        function cargarOpciones() {
-            const evSel = document.getElementById('resEvento');
-            const evs = JSON.parse(localStorage.getItem('listaEventosPY')) || ["IPS", "Playa San Jose", "Rakiura"];
-            evSel.innerHTML = '<option value="">Seleccionar...</option>';
-            evs.forEach(e => evSel.innerHTML += `<option value="${e}">${e}</option>`);
-
-            const motCont = document.getElementById('contenedorMotivos');
-            motCont.innerHTML = "";
-            MOTIVOS.forEach(m => {
-                motCont.innerHTML += `<label class="checkbox-item"><input type="checkbox" name="motivoItem" value="${m}"> ${m}</label>`;
-            });
+        function showRegister(val) {
+            document.getElementById('loginBox').style.display = val ? 'none' : 'block';
+            document.getElementById('registerBox').style.display = val ? 'block' : 'none';
         }
 
-        function agregarEvento() {
-            let n = prompt("Nuevo evento:");
-            if(n) {
-                let evs = JSON.parse(localStorage.getItem('listaEventosPY')) || ["IPS", "Playa San Jose", "Rakiura"];
-                evs.push(n);
-                localStorage.setItem('listaEventosPY', JSON.stringify(evs));
-                cargarOpciones();
-            }
+        function toggleView(id) {
+            const input = document.getElementById(id);
+            input.type = input.type === 'password' ? 'text' : 'password';
         }
 
-        function eliminarEvento() {
-            let s = document.getElementById('resEvento');
-            if(!s.value) return;
-            let evs = JSON.parse(localStorage.getItem('listaEventosPY')).filter(e => e !== s.value);
-            localStorage.setItem('listaEventosPY', JSON.stringify(evs));
-            cargarOpciones();
-        }
-
-        // AUTH
         auth.onAuthStateChanged(user => {
             if (user) {
-                document.getElementById('loginSection').style.display = 'none';
+                document.getElementById('loginBox').style.display = 'none';
+                document.getElementById('registerBox').style.display = 'none';
                 document.getElementById('scannerSection').style.display = 'block';
-                document.getElementById('userEmailDisplay').innerText = "👤 Operador: " + user.email;
-                encenderCamara();
-                cargarOpciones();
+                document.getElementById('welcomeMsg').innerText = "Bienvenido: " + (user.displayName || user.email);
             }
         });
 
-        document.getElementById('loginForm').onsubmit = e => {
+        document.getElementById('registerForm').onsubmit = e => {
             e.preventDefault();
-            auth.signInWithEmailAndPassword(document.getElementById('email').value, document.getElementById('password').value);
+            const p1 = document.getElementById('regPass').value;
+            const p2 = document.getElementById('regPassConf').value;
+            if(p1 !== p2) return alert("Las contraseñas no coinciden");
+
+            auth.createUserWithEmailAndPassword(document.getElementById('regEmail').value, p1)
+                .then(res => {
+                    res.user.updateProfile({ displayName: document.getElementById('regNombre').value });
+                    alert("Cuenta creada con éxito");
+                })
+                .catch(err => alert("Error: " + err.message));
         };
 
-        // CÁMARA E IA
-        async function encenderCamara() {
-            const s = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-            document.getElementById('video').srcObject = s;
-        }
-
-        async function capturarCedula() {
-            document.getElementById('cameraView').style.display = 'none';
-            document.getElementById('loading').style.display = 'block';
-            const v = document.getElementById('video');
-            const c = document.getElementById('canvas');
-            c.width = v.videoWidth; c.height = v.videoHeight;
-            c.getContext('2d').drawImage(v, 0, 0);
-            const res = await Tesseract.recognize(c.toDataURL(), 'spa');
-            document.getElementById('resCedula').value = res.data.text.replace(/\D/g, '').substring(0,8);
-            document.getElementById('loading').style.display = 'none';
-            document.getElementById('resultados').style.display = 'block';
-        }
-
-        function resetEscaneo() {
-            document.getElementById('resultados').style.display = 'none';
-            document.getElementById('cameraView').style.display = 'block';
-        }
-
-        // GUARDADO (FIREBASE + GOOGLE SHEETS)
-        async function confirmarGuardado() {
-            const nom = document.getElementById('resNombre').value;
-            const ced = document.getElementById('resCedula').value;
-            if(!nom || !ced) return alert("Nombre y Cédula obligatorios");
-
-            const motivos = Array.from(document.querySelectorAll('input[name="motivoItem"]:checked')).map(cb => cb.value).join(' | ');
-            
-            const payload = {
-                fecha: new Date().toLocaleString(),
-                operador: auth.currentUser.email,
-                evento: document.getElementById('resEvento').value,
-                nombre: nom,
-                cedula: ced,
-                celular: document.getElementById('resCelular').value,
-                correo: document.getElementById('resCorreoCliente').value,
-                producto: document.querySelector('input[name="resProducto"]:checked').value,
-                motivos: motivos,
-                codigo: document.getElementById('resCodigoTarjeta').value,
-                comentario: document.getElementById('resComentario').value
-            };
-
-            // 1. Guardar en Firebase (Offline Ready)
-            await db.collection("escaneos").add(payload);
-
-            // 2. Enviar a Google Sheets (Si hay internet)
-            if(navigator.onLine && URL_GOOGLE_SHEETS.includes('exec')) {
-                fetch(URL_GOOGLE_SHEETS, {
-                    method: 'POST',
-                    mode: 'no-cors',
-                    body: JSON.stringify(payload)
-                });
-            }
-
-            alert("✅ Registro guardado con éxito.");
-            resetEscaneo();
-        }
-
-        // EXCEL LOCAL
-        async function exportarExcel() {
-            const snap = await db.collection("escaneos").get();
-            const filas = [];
-            snap.forEach(doc => filas.push(doc.data()));
-            const ws = XLSX.utils.json_to_sheet(filas);
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, "Datos");
-            XLSX.writeFile(wb, "Reporte_Eventos.xlsx");
-        }
+        document.getElementById('loginForm').onsubmit = e => {
+            e.preventDefault();
+            auth.signInWithEmailAndPassword(document.getElementById('email').value, document.getElementById('password').value)
+                .catch(err => alert("Datos incorrectos"));
+        };
     </script>
 </body>
 </html>
