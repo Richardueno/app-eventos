@@ -7,10 +7,8 @@
     
     <link rel="manifest" href="./manifest.json">
     <meta name="theme-color" content="#27ae60">
-    
     <link rel="apple-touch-icon" href="logo.png">
     <link rel="icon" type="image/png" href="logo.png">
-    
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     
@@ -25,6 +23,8 @@
         body { font-family: 'Segoe UI', sans-serif; background: #f4f7f6; margin: 0; display: flex; justify-content: center; }
         .card { background: white; width: 100%; max-width: 480px; min-height: 100vh; padding: 20px; text-align: center; box-shadow: 0 0 20px rgba(0,0,0,0.1); box-sizing: border-box; }
         
+        .logo { max-width: 180px; height: auto; margin: 10px auto 20px auto; display: block; }
+
         .auth-form { display: flex; flex-direction: column; gap: 15px; margin-top: 20px; }
         input[type="text"], input[type="email"], input[type="password"], input[type="number"], input[type="tel"], select, textarea { 
             padding: 15px; border-radius: 10px; border: 1px solid #ddd; font-size: 16px; width: 100%; box-sizing: border-box; 
@@ -63,6 +63,8 @@
 
     <div class="card">
         <div id="offlineAlert">⚠️ Sin conexión a Internet. Los datos se guardarán localmente.</div>
+
+        <img src="logo.png?v=2" alt="Logo de la App" class="logo" id="logoApp" onerror="this.style.display='none'">
 
         <div id="loginSection">
             <h2>Ingreso al Sistema</h2>
@@ -229,7 +231,6 @@
             document.getElementById(o).innerText = el.type === "password" ? "👁️" : "🙈";
         }
         
-        // 🌟 AQUÍ PONEMOS EL TEXTO DE BIENVENIDO AL INICIAR SESIÓN 🌟
         auth.onAuthStateChanged(u => {
             if (u) {
                 cambiarPantalla('scannerSection');
@@ -329,37 +330,122 @@
         }
 
         async function confirmarGuardado() {
-            const nom = document.getElementById('resNombre').value;
-            const ced = document.getElementById('resCedula').value;
+            const nom = document.getElementById('resNombre').value.trim();
+            const ced = document.getElementById('resCedula').value.trim();
+            const cel = document.getElementById('resCelular').value.trim();
+            const evento = document.getElementById('resEvento').value;
+            
             if(!nom || !ced || !document.getElementById('checkFisico').checked) return alert("Faltan datos o confirmación de verificación física.");
 
-            const motivos = Array.from(document.querySelectorAll('input[name="motivoItem"]:checked')).map(cb => cb.value).join(' | ');
+            const checksMotivos = document.querySelectorAll('input[name="motivoItem"]:checked');
+            const motivosSeleccionados = Array.from(checksMotivos).map(cb => cb.value).join(' | ');
             
+            const correoCliente = document.getElementById('resCorreoCliente').value.trim();
+            const productoNuevo = document.querySelector('input[name="resProducto"]:checked').value;
+            const codigoTarjeta = document.getElementById('resCodigoTarjeta').value.trim();
+            const comentario = document.getElementById('resComentario').value.trim();
+            const operador = auth.currentUser.displayName || auth.currentUser.email;
+
+            // ESTE ES EL FORMATO QUE ORDENA TU EXCEL MAGNÍFICAMENTE
             const payload = {
-                nombre: nom, cedula: ced, celular: document.getElementById('resCelular').value,
-                evento: document.getElementById('resEvento').value,
-                correo: document.getElementById('resCorreoCliente').value,
-                producto: document.querySelector('input[name="resProducto"]:checked').value,
-                motivos: motivos, operador: auth.currentUser.email,
-                fecha: new Date().toLocaleDateString(), hora: new Date().toLocaleTimeString()
+                nombre_cedula: nom, 
+                numero_cedula: ced, 
+                celular_cliente: cel,
+                evento: evento,
+                correo_cliente: correoCliente || "Sin correo",
+                producto_nuevo: productoNuevo,
+                motivos: motivosSeleccionados,
+                codigo_tarjeta: codigoTarjeta || "N/A",
+                comentarios: comentario || "Sin comentarios",
+                fecha: new Date().toLocaleString(), 
+                operador_sistema: operador
+            };
+
+            // Esto es lo que se envía a Google Sheets
+            const payloadGoogle = {
+                nombre: nom, cedula: ced, celular: cel, evento: evento, correo: correoCliente,
+                producto: productoNuevo, motivos: motivosSeleccionados, operador: operador,
+                fecha: new Date().toLocaleDateString(), hora: new Date().toLocaleTimeString(),
+                codigo_tarjeta: codigoTarjeta, comentarios: comentario
             };
 
             try {
                 await db.collection("escaneos").add(payload);
-                fetch(URL_GOOGLE, { method: 'POST', mode: 'no-cors', body: JSON.stringify(payload) });
+                fetch(URL_GOOGLE, { method: 'POST', mode: 'no-cors', body: JSON.stringify(payloadGoogle) });
                 alert("✅ Registro guardado con éxito.");
                 resetEscaneo();
             } catch(e) { alert("Error al guardar: " + e.message); }
         }
 
+        // 🌟 AQUÍ ESTÁ TU SÚPER FUNCIÓN DE EXCEL RESTAURADA 🌟
         async function exportarExcel() {
+            if (!navigator.onLine) {
+                return alert("⚠️ Necesitas conexión a internet para descargar el Excel completo.");
+            }
+            alert("Generando Excel ordenado... Esto puede tomar unos segundos.");
             const snap = await db.collection("escaneos").get();
-            const data = [];
-            snap.forEach(doc => data.push(doc.data()));
-            const ws = XLSX.utils.json_to_sheet(data);
+            
+            const rawData = [];
+            let maxMotivos = 0;
+            
+            snap.forEach(doc => {
+                const data = doc.data();
+                let arrayMotivos = [];
+                if (data.motivos) {
+                    arrayMotivos = data.motivos.split(' | ').filter(m => m.trim() !== "");
+                }
+                if (arrayMotivos.length > maxMotivos) { maxMotivos = arrayMotivos.length; }
+                
+                data._arrayMotivos = arrayMotivos; 
+                rawData.push(data);
+            });
+            
+            const registrosOrdenados = []; 
+            
+            rawData.forEach(data => {
+                let fechaCorta = data.fecha || "Sin fecha", horaCorta = "";
+                if(data.fecha && data.fecha.includes(',')) {
+                    let partes = data.fecha.split(',');
+                    fechaCorta = partes[0].trim(); horaCorta = partes[1].trim();
+                } else if (data.fecha && data.fecha.includes(' ')) {
+                    let partes = data.fecha.split(' ');
+                    fechaCorta = partes[0].trim(); horaCorta = partes[1].trim();
+                }
+
+                let filaExcel = {
+                    "Fecha": fechaCorta, "Hora": horaCorta,
+                    "Evento / Sucursal": data.evento || "---",
+                    "Nombre y Apellido": data.nombre_cedula || data.nombre || "---",
+                    "Nro. de Cédula": data.numero_cedula || data.cedula || "---",
+                    "Celular Cliente": data.celular_cliente || data.celular || "---",
+                    "Correo Cliente": data.correo_cliente || data.correo || "---",
+                    "¿Producto Nuevo?": data.producto_nuevo || data.producto || "---"
+                };
+                
+                for (let i = 0; i < maxMotivos; i++) {
+                    filaExcel[`Motivo ${i + 1}`] = data._arrayMotivos[i] || "---";
+                }
+                
+                filaExcel["Cód. Tarjeta (Caja)"] = data.codigo_tarjeta || data.codigo || "---";
+                filaExcel["Comentarios"] = data.comentarios || data.comentario || "---";
+                filaExcel["Operador"] = data.operador_sistema || data.operador || "---";
+                
+                registrosOrdenados.push(filaExcel);
+            });
+
+            const ws = XLSX.utils.json_to_sheet(registrosOrdenados);
             const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, "Base");
-            XLSX.writeFile(wb, "Reporte_Eventos.xlsx");
+            
+            let anchosColumnas = [ 
+                { wch: 12 }, { wch: 10 }, { wch: 25 }, { wch: 30 }, 
+                { wch: 15 }, { wch: 25 }, { wch: 18 } 
+            ];
+            for (let i = 0; i < maxMotivos; i++) { anchosColumnas.push({ wch: 35 }); }
+            anchosColumnas.push({ wch: 20 }, { wch: 45 }, { wch: 25 });
+            
+            ws['!cols'] = anchosColumnas;
+            XLSX.utils.book_append_sheet(wb, ws, "Base de Datos");
+            XLSX.writeFile(wb, "Reporte_CRM_Desglosado.xlsx");
         }
     </script>
 </body>
