@@ -1,561 +1,311 @@
 <!DOCTYPE html>
-
 <html lang="es">
-
 <head>
-
     <meta charset="UTF-8">
-
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
     <title>Sistema de Gestión PY</title>
-
     
-
     <link rel="manifest" href="./manifest.json">
-
     <meta name="theme-color" content="#27ae60">
-
     <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/732/732220.png">
-
     <meta name="apple-mobile-web-app-capable" content="yes">
-
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-
     
-
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
-
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
-
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script>
-
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
-
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
-
-
     <style>
-
         :root { --primary: #27ae60; --dark: #2c3e50; }
-
         body { font-family: 'Segoe UI', sans-serif; background: #f4f7f6; margin: 0; display: flex; justify-content: center; }
-
         .card { background: white; width: 100%; max-width: 480px; min-height: 100vh; padding: 20px; text-align: center; box-shadow: 0 0 20px rgba(0,0,0,0.1); box-sizing: border-box; }
-
         
-
         .auth-form { display: flex; flex-direction: column; gap: 15px; margin-top: 20px; }
-
         input[type="text"], input[type="email"], input[type="password"], input[type="number"], input[type="tel"], select, textarea { 
-
             padding: 15px; border-radius: 10px; border: 1px solid #ddd; font-size: 16px; width: 100%; box-sizing: border-box; 
-
         }
-
         
-
         .password-container { position: relative; width: 100%; }
-
         .toggle-password { position: absolute; right: 15px; top: 50%; transform: translateY(-50%); cursor: pointer; font-size: 20px; user-select: none; }
 
-
-
         .scanner-container { position: relative; width: 100%; border-radius: 15px; overflow: hidden; background: #000; height: 260px; }
-
         video { width: 100%; height: 100%; object-fit: cover; }
-
         .overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; box-shadow: inset 0 0 0 45px rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; }
-
         .guide-rect { width: 85%; height: 150px; border: 3px solid var(--primary); border-radius: 12px; box-shadow: 0 0 15px var(--primary); }
 
-
-
         .btn { background: var(--primary); color: white; border: none; padding: 16px; border-radius: 10px; font-weight: bold; cursor: pointer; width: 100%; font-size: 16px; margin-top: 10px; }
-
         .btn-link { background: none; border: none; color: #3498db; cursor: pointer; font-size: 15px; text-decoration: underline; margin-top: 10px; }
-
         
-
         #resultados { margin-top: 20px; background: #fff; padding: 15px; border-radius: 10px; text-align: left; border: 2px solid #3498db; display: none; }
-
         .label-res { font-size: 12px; color: #34495e; font-weight: bold; margin-bottom: 5px; margin-top: 15px; display: block; text-transform: uppercase; }
-
         .editable-input { margin-bottom: 5px; background-color: #fcfcfc; border: 1px solid #bdc3c7; color: var(--dark); }
 
-        .editable-input:focus { border-color: #3498db; outline: none; background-color: white; }
-
-
-
         .checkbox-group { max-height: 180px; overflow-y: auto; border: 1px solid #bdc3c7; padding: 12px; border-radius: 10px; background: #fcfcfc; margin-bottom: 5px; }
-
         .checkbox-item { display: block; margin-bottom: 10px; font-size: 14px; color: #2c3e50; }
-
         .checkbox-item input { margin-right: 8px; transform: scale(1.2); }
 
-
-
         .radio-group { display: flex; gap: 20px; padding: 10px 0; font-size: 16px; }
-
         .radio-group label { display: flex; align-items: center; gap: 5px; cursor: pointer; }
 
-        .radio-group input { transform: scale(1.3); }
-
-
-
         .auth-check { background: #fff3cd; padding: 15px; border-radius: 8px; border: 1px solid #ffeeba; margin-top: 20px; display: flex; align-items: flex-start; gap: 10px; text-align: left; font-size: 13px; color: #856404; }
-
-        .auth-check input { width: 20px; height: 20px; margin-top: 2px; }
-
-
-
         .name-grid { display: flex; gap: 10px; }
-
-        
-
         #offlineAlert { display: none; background: #e74c3c; color: white; padding: 10px; border-radius: 8px; font-weight: bold; margin-bottom: 15px; font-size: 13px; }
-
-        
-
         .event-container { display: flex; gap: 8px; align-items: center; margin-bottom: 5px; }
-
-        .event-container select { flex: 1; margin-bottom: 0; }
-
         .btn-mini { padding: 15px; border-radius: 10px; border: none; color: white; font-weight: bold; cursor: pointer; font-size: 16px; }
-
     </style>
-
 </head>
-
 <body>
 
-
-
     <div class="card">
-
-        
-
-        <div id="offlineAlert">⚠️ Sin conexión a Internet. Los datos se guardarán en el celular y se subirán al volver la señal.</div>
-
-
+        <div id="offlineAlert">⚠️ Sin conexión a Internet. Los datos se guardarán localmente.</div>
 
         <div id="loginSection">
-
             <h2>Ingreso al Sistema</h2>
-
             <form class="auth-form" id="loginForm">
-
-                <input type="email" id="email" name="email" placeholder="Correo electrónico" autocomplete="username" required>
-
+                <input type="email" id="email" placeholder="Correo electrónico" required>
                 <div class="password-container">
-
-                    <input type="password" id="password" name="password" placeholder="Contraseña" autocomplete="current-password" required>
-
+                    <input type="password" id="password" placeholder="Contraseña" required>
                     <span class="toggle-password" onclick="mostrarOcultarClave('password', 'ojoLogin')"><span id="ojoLogin">👁️</span></span>
-
                 </div>
-
                 <button type="submit" class="btn">INGRESAR</button>
-
             </form>
-
             <button class="btn-link" onclick="cambiarPantalla('registerSection')">¿No tienes cuenta? Regístrate aquí</button>
-
         </div>
-
-
 
         <div id="registerSection" style="display: none;">
-
             <h2>Crear Cuenta</h2>
-
             <form class="auth-form" id="registerForm">
-
                 <div class="name-grid">
-
-                    <input type="text" id="regNombre" name="given-name" placeholder="Nombre" required>
-
-                    <input type="text" id="regApellido" name="family-name" placeholder="Apellido" required>
-
+                    <input type="text" id="regNombre" placeholder="Nombre" required>
+                    <input type="text" id="regApellido" placeholder="Apellido" required>
                 </div>
-
-                <input type="email" id="regEmail" name="email" placeholder="Correo electrónico" autocomplete="username" required>
-
+                <input type="email" id="regEmail" placeholder="Correo electrónico" required>
                 <div class="password-container">
-
-                    <input type="password" id="regPassword" name="new-password" placeholder="Contraseña (mín. 6 letras)" autocomplete="new-password" required>
-
+                    <input type="password" id="regPassword" placeholder="Contraseña (mín. 6 letras)" required>
                     <span class="toggle-password" onclick="mostrarOcultarClave('regPassword', 'ojoReg1')"><span id="ojoReg1">👁️</span></span>
-
                 </div>
-
                 <div class="password-container">
-
-                    <input type="password" id="regConfirmPassword" name="new-password-confirm" placeholder="Confirme su contraseña" autocomplete="new-password" required>
-
+                    <input type="password" id="regConfirmPassword" placeholder="Confirme su contraseña" required>
                     <span class="toggle-password" onclick="mostrarOcultarClave('regConfirmPassword', 'ojoReg2')"><span id="ojoReg2">👁️</span></span>
-
                 </div>
-
                 <button type="submit" class="btn" style="background: #3498db;">REGISTRARME</button>
-
             </form>
-
             <button class="btn-link" style="color: #27ae60;" onclick="cambiarPantalla('loginSection')">¿Ya tienes cuenta? Inicia sesión</button>
-
         </div>
 
-
-
         <div id="scannerSection" style="display: none;">
-
             <div id="cameraView">
-
                 <div class="scanner-container">
-
                     <video id="video" autoplay playsinline></video>
-
                     <div class="overlay"><div class="guide-rect"></div></div>
-
                 </div>
-
                 <button class="btn" onclick="capturarCedula()">📷 CAPTURAR DATOS DEL CLIENTE</button>
-
             </div>
-
-
 
             <div id="loading" style="display:none; margin: 20px; font-weight: bold; color: var(--primary);">⌛ PROCESANDO...</div>
 
-
-
             <div id="resultados">
-
-                <p style="font-size: 13px; color: #e67e22; margin-top:0; text-align:center;"><strong>Complete el Formulario de Atención</strong></p>
-
-                
-
                 <label class="label-res">NOMBRE Y APELLIDO *:</label>
-
                 <input type="text" id="resNombre" class="editable-input" style="font-weight: bold;">
-
-                
-
                 <label class="label-res">NÚMERO DE CÉDULA *:</label>
-
                 <input type="number" id="resCedula" class="editable-input" style="font-weight: bold;">
-
-
-
                 <label class="label-res">NÚMERO DE CELULAR *:</label>
-
-                <input type="tel" id="resCelular" class="editable-input" placeholder="Ej: 0981 123 456">
-
-
+                <input type="tel" id="resCelular" class="editable-input">
 
                 <hr style="border: 0.5px solid #eee; margin: 20px 0;">
 
-
-
                 <label class="label-res">NOMBRE DEL EVENTO *:</label>
-
                 <div class="event-container">
-
                     <select id="resEvento" class="editable-input"></select>
-
-                    <button type="button" class="btn-mini" style="background: #3498db;" onclick="agregarEvento()" title="Agregar nuevo evento">➕</button>
-
-                    <button type="button" class="btn-mini" style="background: #e74c3c;" onclick="eliminarEvento()" title="Eliminar evento seleccionado">🗑️</button>
-
+                    <button type="button" class="btn-mini" style="background: #3498db;" onclick="agregarEvento()">➕</button>
+                    <button type="button" class="btn-mini" style="background: #e74c3c;" onclick="eliminarEvento()">🗑️</button>
                 </div>
 
+                <label class="label-res">CORREO ELECTRÓNICO:</label>
+                <input type="email" id="resCorreoCliente" class="editable-input">
 
-
-                <label class="label-res">CORREO ELECTRÓNICO (CLIENTE):</label>
-
-                <input type="email" id="resCorreoCliente" class="editable-input" placeholder="ejemplo@correo.com">
-
-
-
-                <label class="label-res">¿ACTIVÓ UN PRODUCTO NUEVO? *</label>
-
+                <label class="label-res">¿PRODUCTO NUEVO? *</label>
                 <div class="radio-group">
-
                     <label><input type="radio" name="resProducto" value="SI"> SI</label>
-
                     <label><input type="radio" name="resProducto" value="No" checked> No</label>
-
                 </div>
 
-
-
-                <label class="label-res">MOTIVO DE ATENCIÓN * (Seleccione uno o varios):</label>
-
+                <label class="label-res">MOTIVO DE ATENCIÓN *:</label>
                 <div class="checkbox-group" id="contenedorMotivos"></div>
 
-
-
-                <label class="label-res">NÚMERO DE CÓDIGO DE TARJETA (CAJA):</label>
-
-                <input type="text" id="resCodigoTarjeta" class="editable-input" placeholder="Ingrese el código">
-
-
+                <label class="label-res">CÓD. TARJETA (CAJA):</label>
+                <input type="text" id="resCodigoTarjeta" class="editable-input">
 
                 <label class="label-res">COMENTARIO ADICIONAL:</label>
-
-                <textarea id="resComentario" class="editable-input" rows="3" placeholder="Escriba aquí sus observaciones..."></textarea>
-
-
+                <textarea id="resComentario" class="editable-input" rows="3"></textarea>
 
                 <div class="auth-check">
-
                     <input type="checkbox" id="checkFisico">
-
-                    <label for="checkFisico"><strong>Verificación:</strong> Confirmo que el cliente presentó el documento original.</label>
-
+                    <label for="checkFisico">Confirmo que el cliente presentó el documento original.</label>
                 </div>
-
                 
-
                 <div style="display: flex; gap: 10px; margin-top: 15px;">
-
                     <button class="btn" style="flex: 2;" onclick="confirmarGuardado()">✅ GUARDAR REGISTRO</button>
-
-                    <button class="btn" style="flex: 1; background: #e74c3c;" onclick="resetEscaneo()">🔄 DESCARTAR</button>
-
+                    <button class="btn" style="flex: 1; background: #e74c3c;" onclick="resetEscaneo()">🔄</button>
                 </div>
-
             </div>
 
-
-
-            <button onclick="exportarExcel()" style="background:#34495e; color:white; border:none; padding:12px; margin-top:40px; border-radius:8px; width:100%;">📊 DESCARGAR EXCEL COMPLETO</button>
-
-            <p style="font-size: 12px; color: #7f8c8d; margin-top: 20px; font-weight: bold;" id="userEmailDisplay"></p>
-
-            <button onclick="cerrarSesion()" style="background: none; border: none; color: #e74c3c; cursor: pointer; text-decoration: underline; margin-bottom: 20px;">Cerrar Sesión</button>
-
+            <button onclick="exportarExcel()" style="background:#34495e; color:white; border:none; padding:12px; margin-top:40px; border-radius:8px; width:100%;">📊 DESCARGAR EXCEL</button>
+            <p id="userEmailDisplay" style="font-size: 12px; color: #7f8c8d; margin-top: 20px; font-weight: bold;"></p>
+            <button onclick="cerrarSesion()" style="background: none; border: none; color: #e74c3c; cursor: pointer; text-decoration: underline;">Cerrar Sesión</button>
         </div>
-
     </div>
-
-
 
     <canvas id="canvas" style="display:none;"></canvas>
 
-
-
     <script>
+        // CONFIGURACIÓN DE FIREBASE
+        const firebaseConfig = {
+            apiKey: "AIzaSyAE1KBu1CufjKO65OpVHOPcmhyliQYsoDU",
+            authDomain: "miescanerweb.firebaseapp.com",
+            projectId: "miescanerweb",
+            storageBucket: "miescanerweb.firebasestorage.app",
+            messagingSenderId: "403272649163",
+            appId: "1:403272649163:web:53f29dd4e676c31d268e4e"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+        db.enablePersistence().catch(err => console.log(err.code));
 
-        // REGISTRO DEL SERVICE WORKER PARA QUE LA APP SE INSTALE Y FUNCIONE OFFLINE
+        // 🟢 TU NUEVO ENLACE DE GOOGLE SHEETS
+        const URL_GOOGLE = 'https://script.google.com/a/macros/ueno.com.py/s/AKfycbwltAbV25PBEiCkCU5YCOb-4upps3eO6dzPwxH1ANtgT17VCOkrDQfifzpF2myDWXbt/exec';
 
-        if ('serviceWorker' in navigator) {
-
-            window.addEventListener('load', () => {
-
-                navigator.serviceWorker.register('./sw.js')
-
-                .then(reg => console.log('¡Modo App Offline Activado!', reg))
-
-                .catch(err => console.log('Error al activar Modo App', err));
-
-            });
-
-        }
-
-
-
-        // EVENTOS DINÁMICOS
-
+        // LÓGICA DE INTERFAZ Y EVENTOS
         const EVENTOS_DEFAULT = ["Oficina del IPS", "Playa San Jose", "Xpo Casa ueno San Bernardino", "Rakiura", "Otros"];
-
-
-
         function cargarEventos() {
-
-            let eventosGuardados = JSON.parse(localStorage.getItem('listaEventosPY')) || EVENTOS_DEFAULT;
-
-            const select = document.getElementById('resEvento');
-
-            select.innerHTML = '<option value="">Seleccionar...</option>';
-
-            eventosGuardados.forEach(ev => {
-
-                let opt = document.createElement('option');
-
-                opt.value = ev; opt.innerText = ev;
-
-                select.appendChild(opt);
-
-            });
-
+            let evs = JSON.parse(localStorage.getItem('listaEventosPY')) || EVENTOS_DEFAULT;
+            const sel = document.getElementById('resEvento');
+            sel.innerHTML = '<option value="">Seleccionar...</option>';
+            evs.forEach(e => sel.innerHTML += `<option value="${e}">${e}</option>`);
         }
-
-
-
         function agregarEvento() {
-
-            let nuevoEvento = prompt("Ingrese el nombre del nuevo evento o sucursal:");
-
-            if (nuevoEvento && nuevoEvento.trim() !== "") {
-
-                let eventosGuardados = JSON.parse(localStorage.getItem('listaEventosPY')) || EVENTOS_DEFAULT;
-
-                if(!eventosGuardados.includes(nuevoEvento.trim())) {
-
-                    eventosGuardados.push(nuevoEvento.trim());
-
-                    localStorage.setItem('listaEventosPY', JSON.stringify(eventosGuardados));
-
-                    cargarEventos();
-
-                    document.getElementById('resEvento').value = nuevoEvento.trim();
-
-                } else { alert("Ese evento ya existe."); }
-
-            }
-
-        }
-
-
-
-        function eliminarEvento() {
-
-            let select = document.getElementById('resEvento');
-
-            let valorAEliminar = select.value;
-
-            if (!valorAEliminar) return alert("Seleccione un evento de la lista para eliminarlo.");
-
-            if (confirm("¿Eliminar '" + valorAEliminar + "'?")) {
-
-                let eventosGuardados = JSON.parse(localStorage.getItem('listaEventosPY')) || EVENTOS_DEFAULT;
-
-                eventosGuardados = eventosGuardados.filter(ev => ev !== valorAEliminar);
-
-                localStorage.setItem('listaEventosPY', JSON.stringify(eventosGuardados));
-
+            let n = prompt("Nuevo evento:");
+            if (n) {
+                let evs = JSON.parse(localStorage.getItem('listaEventosPY')) || EVENTOS_DEFAULT;
+                evs.push(n);
+                localStorage.setItem('listaEventosPY', JSON.stringify(evs));
                 cargarEventos();
-
             }
-
+        }
+        function eliminarEvento() {
+            let v = document.getElementById('resEvento').value;
+            if (v && confirm("¿Eliminar?")) {
+                let evs = (JSON.parse(localStorage.getItem('listaEventosPY')) || EVENTOS_DEFAULT).filter(e => e !== v);
+                localStorage.setItem('listaEventosPY', JSON.stringify(evs));
+                cargarEventos();
+            }
         }
 
-        cargarEventos();
-
-
-
-        // MOTIVOS DE ATENCIÓN
-
-        const listaMotivos = [
-
-            "Consultas (especificar en comentario adicional)", "Onboarding sin retiro de tarjeta", "Onboarding con retiro de tarjetas",
-
-            "Solo vinculación de tarjeta (Ingresar el numero sobre)", "Activación de TC y TD", "Firma de CU", "TC Albirroja nueva",
-
-            "Error al vincular la tarjeta", "Inconveniente con el registro en la App - Contactar", "Solicitud de oferta TC denegada",
-
-            "Solicitud oferta Préstamo - Contactar", "Activación cuenta menor", "Reimpresión de tarjeta", "Reimpresión TC Albirroja",
-
-            "Alta de ahorro programado", "Reclamos sobre productos - Contactar", "Solicitud de oferta de TC", "Solicitud de aumento de linea de TC",
-
-            "Error al ingresar en la app", "Vinculación de Alias", "Actualización de Fé de vida", "Cambio de entidad bancaria de jubilados",
-
-            "Nuevo Jubilado", "Otro"
-
-        ];
-
-        
-
-        const contenedor = document.getElementById('contenedorMotivos');
-
-        listaMotivos.forEach(motivo => {
-
-            const label = document.createElement('label');
-
-            label.className = 'checkbox-item';
-
-            label.innerHTML = `<input type="checkbox" name="motivoItem" value="${motivo}"> ${motivo}`;
-
-            contenedor.appendChild(label);
-
+        // MOTIVOS
+        const MOTIVOS = ["Consultas", "Onboarding sin retiro", "Onboarding con retiro", "Solo vinculación", "Activación TC/TD", "Firma CU", "Otro"];
+        const cont = document.getElementById('contenedorMotivos');
+        MOTIVOS.forEach(m => {
+            cont.innerHTML += `<label class="checkbox-item"><input type="checkbox" name="motivoItem" value="${m}"> ${m}</label>`;
         });
 
-
-
-        // DETECCIÓN DE INTERNET
-
-        window.addEventListener('online', () => document.getElementById('offlineAlert').style.display = 'none');
-
-        window.addEventListener('offline', () => document.getElementById('offlineAlert').style.display = 'block');
-
-
-
-        // FIREBASE CONFIG
-
-        const firebaseConfig = {
-
-            apiKey: "AIzaSyAE1KBu1CufjKO65OpVHOPcmhyliQYsoDU",
-
-            authDomain: "miescanerweb.firebaseapp.com",
-
-            projectId: "miescanerweb",
-
-            storageBucket: "miescanerweb.firebasestorage.app",
-
-            messagingSenderId: "403272649163",
-
-            appId: "1:403272649163:web:53f29dd4e676c31d268e4e"
-
-        };
-
-        firebase.initializeApp(firebaseConfig);
-
-        const auth = firebase.auth();
-
-        const db = firebase.firestore();
-
-
-
-        db.enablePersistence().catch(err => console.log("Offline mode err: ", err.code));
-
-
-
-        function cambiarPantalla(pantalla) {
-
+        // AUTH
+        function cambiarPantalla(p) {
             document.getElementById('loginSection').style.display = 'none';
-
             document.getElementById('registerSection').style.display = 'none';
-
-            document.getElementById(pantalla).style.display = 'block';
-
+            document.getElementById(p).style.display = 'block';
         }
-
-
-
-        function mostrarOcultarClave(inputId, iconId) {
-
-            const input = document.getElementById(inputId);
-
-            const icon = document.getElementById(iconId);
-
-            if (input.type === "password") { input.type = "text"; icon.innerText = "🙈"; } 
-
-            else { input.type = "password"; icon.innerText = "👁️"; }
-
+        function mostrarOcultarClave(i, o) {
+            const el = document.getElementById(i);
+            el.type = el.type === "password" ? "text" : "password";
+            document.getElementById(o).innerText = el.type === "password" ? "👁️" : "🙈";
         }
-
-
-
-        document.getElementById('registerForm').addEventListener('submit', async (e) => {
-
+        auth.onAuthStateChanged(u => {
+            if (u) {
+                cambiarPantalla('scannerSection');
+                document.getElementById('userEmailDisplay').innerText = "👤 Operador: " + (u.displayName || u.email);
+                encenderCamara(); cargarEventos();
+            }
+        });
+        document.getElementById('loginForm').onsubmit = e => {
             e.preventDefault();
+            auth.signInWithEmailAndPassword(document.getElementById('email').value, document.getElementById('password').value).catch(() => alert("Error"));
+        };
+        document.getElementById('registerForm').onsubmit = async e => {
+            e.preventDefault();
+            const p = document.getElementById('regPassword').value;
+            if(p !== document.getElementById('regConfirmPassword').value) return alert("Error claves");
+            try {
+                const res = await auth.createUserWithEmailAndPassword(document.getElementById('regEmail').value, p);
+                await res.user.updateProfile({ displayName: document.getElementById('regNombre').value + " " + document.getElementById('regApellido').value });
+                alert("Listo");
+            } catch(e) { alert(e.message); }
+        };
+        function cerrarSesion() { auth.signOut(); location.reload(); }
 
-            const nom = document.getElementById('regNombre').value.trim();
+        // CÁMARA E IA
+        async function encenderCamara() {
+            const s = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+            document.getElementById('video').srcObject = s;
+        }
+        async function capturarCedula() {
+            document.getElementById('cameraView').style.display = 'none';
+            document.getElementById('loading').style.display = 'block';
+            const v = document.getElementById('video');
+            const c = document.getElementById('canvas');
+            c.width = v.videoWidth; c.height = v.videoHeight;
+            c.getContext('2d').drawImage(v, 0, 0);
+            const res = await Tesseract.recognize(c.toDataURL(), 'spa');
+            document.getElementById('resNombre').value = res.data.text.split('\n')[1] || "";
+            document.getElementById('resCedula').value = res.data.text.replace(/\D/g, '').substring(0,8);
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('resultados').style.display = 'block';
+        }
+        function resetEscaneo() {
+            document.getElementById('resultados').style.display = 'none';
+            document.getElementById('cameraView').style.display = 'block';
+        }
 
-            const ape = document.getElementById('regApellido').value.trim();
+        // GUARDADO (FIREBASE + EXCEL AUTOMÁTICO)
+        async function confirmarGuardado() {
+            const nom = document.getElementById('resNombre').value;
+            const ced = document.getElementById('resCedula').value;
+            if(!nom || !ced || !document.getElementById('checkFisico').checked) return alert("Faltan datos");
 
-            const email = document.getElementById('regEmail').value.trim();
+            const motivos = Array.from(document.querySelectorAll('input[name="motivoItem"]:checked')).map(cb => cb.value).join(' | ');
+            
+            const payload = {
+                nombre: nom, cedula: ced, celular: document.getElementById('resCelular').value,
+                evento: document.getElementById('resEvento').value,
+                correo: document.getElementById('resCorreoCliente').value,
+                producto: document.querySelector('input[name="resProducto"]:checked').value,
+                motivos: motivos, operador: auth.currentUser.email,
+                fecha: new Date().toLocaleDateString(), hora: new Date().toLocaleTimeString()
+            };
 
-            const pass =
+            try {
+                // 1. Firebase
+                await db.collection("escaneos").add(payload);
+                
+                // 2. Google Sheets Automático
+                fetch(URL_GOOGLE, { method: 'POST', mode: 'no-cors', body: JSON.stringify(payload) });
+
+                alert("✅ Guardado en Firebase y Excel.");
+                resetEscaneo();
+            } catch(e) { alert("Error"); }
+        }
+
+        async function exportarExcel() {
+            const snap = await db.collection("escaneos").get();
+            const data = [];
+            snap.forEach(doc => data.push(doc.data()));
+            const ws = XLSX.utils.json_to_sheet(data);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Base");
+            XLSX.writeFile(wb, "Reporte.xlsx");
+        }
+    </script>
+</body>
+</html>
