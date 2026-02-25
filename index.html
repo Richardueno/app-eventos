@@ -104,7 +104,7 @@
                 <button class="btn" onclick="capturarCedula()">📷 CAPTURAR DATOS DEL CLIENTE</button>
             </div>
 
-            <div id="loading" style="display:none; margin: 20px; font-weight: bold; color: var(--primary);">⌛ PROCESANDO...</div>
+            <div id="loading" style="display:none; margin: 20px; font-weight: bold; color: var(--primary);">⌛ PROCESANDO CÉDULA...</div>
 
             <div id="resultados">
                 <label class="label-res">NOMBRE Y APELLIDO *:</label>
@@ -240,22 +240,89 @@
         function cerrarSesion() { auth.signOut(); location.reload(); }
 
         async function encenderCamara() {
-            const s = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-            document.getElementById('video').srcObject = s;
+            try {
+                const s = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+                document.getElementById('video').srcObject = s;
+            } catch (e) {
+                console.log(e);
+            }
         }
+
+        // --- NUEVA LÓGICA DE ESCANEO MEJORADA ---
         async function capturarCedula() {
             document.getElementById('cameraView').style.display = 'none';
             document.getElementById('loading').style.display = 'block';
+            
             const v = document.getElementById('video');
             const c = document.getElementById('canvas');
-            c.width = v.videoWidth; c.height = v.videoHeight;
-            c.getContext('2d').drawImage(v, 0, 0);
-            const res = await Tesseract.recognize(c.toDataURL(), 'spa');
-            document.getElementById('resNombre').value = res.data.text.split('\n')[1] || "";
-            document.getElementById('resCedula').value = res.data.text.replace(/\D/g, '').substring(0,8);
+            const ctx = c.getContext('2d', { willReadFrequently: true });
+            
+            c.width = v.videoWidth; 
+            c.height = v.videoHeight;
+            ctx.drawImage(v, 0, 0, c.width, c.height);
+            
+            // Filtro de Alto Contraste (Blanco y Negro)
+            let imgData = ctx.getImageData(0, 0, c.width, c.height);
+            let pixels = imgData.data;
+            for (let i = 0; i < pixels.length; i += 4) {
+                let gris = (pixels[i] * 0.3) + (pixels[i+1] * 0.59) + (pixels[i+2] * 0.11);
+                let color = gris > 110 ? 255 : 0; 
+                pixels[i] = color; 
+                pixels[i+1] = color; 
+                pixels[i+2] = color;
+            }
+            ctx.putImageData(imgData, 0, 0);
+            
+            try {
+                const res = await Tesseract.recognize(c.toDataURL('image/png'), 'spa');
+                const txt = res.data.text.toUpperCase();
+                const lineas = txt.split('\n').map(l => l.trim()).filter(l => l.length > 2);
+
+                // Extracción de Cédula (Busca números de 6 a 8 dígitos)
+                let cedulaFinal = "";
+                const numerosEncontrados = txt.match(/\b\d{6,8}\b/g);
+                if (numerosEncontrados && numerosEncontrados.length > 0) {
+                    cedulaFinal = numerosEncontrados[0]; 
+                }
+
+                // Extracción de Apellido y Nombre
+                let apellidos = "", nombres = "";
+                for(let i = 0; i < lineas.length; i++) {
+                    let lineaActual = lineas[i];
+
+                    if(/(APELL|PELL|APEL|APELLIDO)/.test(lineaActual)) {
+                        let textoLimpiado = lineaActual.replace(/.*(APELLIDOS?|PELLIDOS?|APEL)\s*/, '').replace(/[^A-ZÑ\s]/g, '').trim();
+                        if (textoLimpiado.length > 2) { apellidos = textoLimpiado; } 
+                        else if (lineas[i+1]) { apellidos = lineas[i+1].replace(/[^A-ZÑ\s]/g, '').trim(); }
+                    }
+
+                    if(/(NOMB|NONB|NOMBRE)/.test(lineaActual)) {
+                        let textoLimpiado = lineaActual.replace(/.*(NOMBRES?|NONBRES?|NOMBRE)\s*/, '').replace(/[^A-ZÑ\s]/g, '').trim();
+                        if (textoLimpiado.length > 2) { nombres = textoLimpiado; } 
+                        else if (lineas[i+1]) { nombres = lineas[i+1].replace(/[^A-ZÑ\s]/g, '').trim(); }
+                    }
+                }
+
+                document.getElementById('resNombre').value = (apellidos + " " + nombres).trim();
+                document.getElementById('resCedula').value = cedulaFinal;
+
+            } catch (e) { 
+                console.log("Error OCR:", e); 
+            }
+            
+            // Limpiar campos extra
+            document.getElementById('resCelular').value = ""; 
+            document.getElementById('resCorreoCliente').value = ""; 
+            document.querySelector('input[name="resProducto"][value="No"]').checked = true;
+            document.querySelectorAll('input[name="motivoItem"]').forEach(cb => cb.checked = false);
+            document.getElementById('resCodigoTarjeta').value = ""; 
+            document.getElementById('resComentario').value = ""; 
+            document.getElementById('checkFisico').checked = false; 
+
             document.getElementById('loading').style.display = 'none';
             document.getElementById('resultados').style.display = 'block';
         }
+
         function resetEscaneo() {
             document.getElementById('resultados').style.display = 'none';
             document.getElementById('cameraView').style.display = 'block';
