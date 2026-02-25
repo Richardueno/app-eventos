@@ -42,7 +42,8 @@
         .label-res { font-size: 12px; color: #34495e; font-weight: bold; margin-bottom: 5px; margin-top: 15px; display: block; text-transform: uppercase; }
         .editable-input { margin-bottom: 5px; background-color: #fcfcfc; border: 1px solid #bdc3c7; color: var(--dark); }
 
-        .checkbox-group { max-height: 180px; overflow-y: auto; border: 1px solid #bdc3c7; padding: 12px; border-radius: 10px; background: #fcfcfc; margin-bottom: 5px; }
+        /* Aumenté el tamaño a 250px para que se vean más motivos a la vez */
+        .checkbox-group { max-height: 250px; overflow-y: auto; border: 1px solid #bdc3c7; padding: 12px; border-radius: 10px; background: #fcfcfc; margin-bottom: 5px; }
         .checkbox-item { display: block; margin-bottom: 10px; font-size: 14px; color: #2c3e50; }
         .checkbox-item input { margin-right: 8px; transform: scale(1.2); }
 
@@ -200,7 +201,16 @@
             }
         }
 
-        const MOTIVOS = ["Consultas", "Onboarding sin retiro", "Onboarding con retiro", "Solo vinculación", "Activación TC/TD", "Firma CU", "Otro"];
+        // AQUÍ ESTÁ TU LISTA COMPLETA DE VUELTA
+        const MOTIVOS = [
+            "Consultas (especificar en comentario)", "Onboarding sin retiro de tarjeta", "Onboarding con retiro de tarjetas",
+            "Solo vinculación de tarjeta", "Activación de TC y TD", "Firma de CU", "TC Albirroja nueva",
+            "Error al vincular la tarjeta", "Inconveniente con registro en la App", "Solicitud de oferta TC denegada",
+            "Solicitud oferta Préstamo", "Activación cuenta menor", "Reimpresión de tarjeta", "Reimpresión TC Albirroja",
+            "Alta de ahorro programado", "Reclamos sobre productos", "Solicitud de oferta de TC", "Solicitud aumento linea de TC",
+            "Error al ingresar en la app", "Vinculación de Alias", "Actualización de Fé de vida", "Cambio entidad bancaria jubilados",
+            "Nuevo Jubilado", "Otro"
+        ];
         const cont = document.getElementById('contenedorMotivos');
         MOTIVOS.forEach(m => {
             cont.innerHTML += `<label class="checkbox-item"><input type="checkbox" name="motivoItem" value="${m}"> ${m}</label>`;
@@ -240,22 +250,74 @@
         function cerrarSesion() { auth.signOut(); location.reload(); }
 
         async function encenderCamara() {
-            const s = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-            document.getElementById('video').srcObject = s;
+            try {
+                const s = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment", width: { ideal: 1280 } } });
+                document.getElementById('video').srcObject = s;
+            } catch (e) {
+                console.log(e);
+            }
         }
+
         async function capturarCedula() {
             document.getElementById('cameraView').style.display = 'none';
             document.getElementById('loading').style.display = 'block';
+            
             const v = document.getElementById('video');
             const c = document.getElementById('canvas');
-            c.width = v.videoWidth; c.height = v.videoHeight;
-            c.getContext('2d').drawImage(v, 0, 0);
-            const res = await Tesseract.recognize(c.toDataURL(), 'spa');
-            document.getElementById('resNombre').value = res.data.text.split('\n')[1] || "";
-            document.getElementById('resCedula').value = res.data.text.replace(/\D/g, '').substring(0,8);
+            const ctx = c.getContext('2d', { willReadFrequently: true });
+            
+            c.width = v.videoWidth; 
+            c.height = v.videoHeight;
+            ctx.drawImage(v, 0, 0, c.width, c.height);
+            
+            let imgData = ctx.getImageData(0, 0, c.width, c.height);
+            let pixels = imgData.data;
+            for (let i = 0; i < pixels.length; i += 4) {
+                let gris = (pixels[i] * 0.3) + (pixels[i+1] * 0.59) + (pixels[i+2] * 0.11);
+                let color = gris > 110 ? 255 : 0; 
+                pixels[i] = color; 
+                pixels[i+1] = color; 
+                pixels[i+2] = color;
+            }
+            ctx.putImageData(imgData, 0, 0);
+            
+            try {
+                const res = await Tesseract.recognize(c.toDataURL('image/png'), 'spa');
+                const txt = res.data.text.toUpperCase();
+                const lineas = txt.split('\n').map(l => l.trim()).filter(l => l.length > 2);
+
+                let cedulaFinal = "";
+                const numerosEncontrados = txt.match(/\b\d{6,8}\b/g);
+                if (numerosEncontrados && numerosEncontrados.length > 0) {
+                    cedulaFinal = numerosEncontrados[0]; 
+                }
+
+                let apellidos = "", nombres = "";
+                for(let i = 0; i < lineas.length; i++) {
+                    let lineaActual = lineas[i];
+
+                    if(/(APELL|PELL|APEL|APELLIDO)/.test(lineaActual)) {
+                        let textoLimpiado = lineaActual.replace(/.*(APELLIDOS?|PELLIDOS?|APEL)\s*/, '').replace(/[^A-ZÑ\s]/g, '').trim();
+                        if (textoLimpiado.length > 2) { apellidos = textoLimpiado; } 
+                        else if (lineas[i+1]) { apellidos = lineas[i+1].replace(/[^A-ZÑ\s]/g, '').trim(); }
+                    }
+
+                    if(/(NOMB|NONB|NOMBRE)/.test(lineaActual)) {
+                        let textoLimpiado = lineaActual.replace(/.*(NOMBRES?|NONBRES?|NOMBRE)\s*/, '').replace(/[^A-ZÑ\s]/g, '').trim();
+                        if (textoLimpiado.length > 2) { nombres = textoLimpiado; } 
+                        else if (lineas[i+1]) { nombres = lineas[i+1].replace(/[^A-ZÑ\s]/g, '').trim(); }
+                    }
+                }
+
+                document.getElementById('resNombre').value = (apellidos + " " + nombres).trim();
+                document.getElementById('resCedula').value = cedulaFinal;
+
+            } catch (e) { console.log("Error OCR:", e); }
+            
             document.getElementById('loading').style.display = 'none';
             document.getElementById('resultados').style.display = 'block';
         }
+
         function resetEscaneo() {
             document.getElementById('resultados').style.display = 'none';
             document.getElementById('cameraView').style.display = 'block';
