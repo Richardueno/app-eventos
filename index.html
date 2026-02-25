@@ -7,7 +7,10 @@
     
     <link rel="manifest" href="./manifest.json">
     <meta name="theme-color" content="#27ae60">
-    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/732/732220.png">
+    
+    <link rel="apple-touch-icon" href="logo.png">
+    <link rel="icon" type="image/png" href="logo.png">
+    
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     
@@ -22,9 +25,6 @@
         body { font-family: 'Segoe UI', sans-serif; background: #f4f7f6; margin: 0; display: flex; justify-content: center; }
         .card { background: white; width: 100%; max-width: 480px; min-height: 100vh; padding: 20px; text-align: center; box-shadow: 0 0 20px rgba(0,0,0,0.1); box-sizing: border-box; }
         
-        /* ESTILO PARA EL LOGO */
-        .logo { max-width: 180px; height: auto; margin: 10px auto 20px auto; display: block; }
-
         .auth-form { display: flex; flex-direction: column; gap: 15px; margin-top: 20px; }
         input[type="text"], input[type="email"], input[type="password"], input[type="number"], input[type="tel"], select, textarea { 
             padding: 15px; border-radius: 10px; border: 1px solid #ddd; font-size: 16px; width: 100%; box-sizing: border-box; 
@@ -64,8 +64,6 @@
     <div class="card">
         <div id="offlineAlert">⚠️ Sin conexión a Internet. Los datos se guardarán localmente.</div>
 
-        <img src="logo.png?v=2" alt="Logo de la App" class="logo" id="logoApp" onerror="this.style.display='none'">
-
         <div id="loginSection">
             <h2>Ingreso al Sistema</h2>
             <form class="auth-form" id="loginForm">
@@ -101,6 +99,8 @@
         </div>
 
         <div id="scannerSection" style="display: none;">
+            <h3 id="welcomeMsg" style="color: var(--dark); margin-top: 0; margin-bottom: 20px;"></h3>
+
             <div id="cameraView">
                 <div class="scanner-container">
                     <video id="video" autoplay playsinline></video>
@@ -158,8 +158,7 @@
             </div>
 
             <button onclick="exportarExcel()" style="background:#34495e; color:white; border:none; padding:12px; margin-top:40px; border-radius:8px; width:100%;">📊 DESCARGAR EXCEL</button>
-            <p id="userEmailDisplay" style="font-size: 12px; color: #7f8c8d; margin-top: 20px; font-weight: bold;"></p>
-            <button onclick="cerrarSesion()" style="background: none; border: none; color: #e74c3c; cursor: pointer; text-decoration: underline;">Cerrar Sesión</button>
+            <button onclick="cerrarSesion()" style="background: none; border: none; color: #e74c3c; cursor: pointer; text-decoration: underline; margin-top: 20px;">Cerrar Sesión</button>
         </div>
     </div>
 
@@ -229,13 +228,16 @@
             el.type = el.type === "password" ? "text" : "password";
             document.getElementById(o).innerText = el.type === "password" ? "👁️" : "🙈";
         }
+        
+        // 🌟 AQUÍ PONEMOS EL TEXTO DE BIENVENIDO AL INICIAR SESIÓN 🌟
         auth.onAuthStateChanged(u => {
             if (u) {
                 cambiarPantalla('scannerSection');
-                document.getElementById('userEmailDisplay').innerText = "👤 Operador: " + (u.displayName || u.email);
+                document.getElementById('welcomeMsg').innerText = "Bienvenido: " + (u.displayName || u.email);
                 encenderCamara(); cargarEventos();
             }
         });
+        
         document.getElementById('loginForm').onsubmit = e => {
             e.preventDefault();
             auth.signInWithEmailAndPassword(document.getElementById('email').value, document.getElementById('password').value).catch(() => alert("Error al iniciar sesión"));
