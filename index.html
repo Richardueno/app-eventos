@@ -64,7 +64,7 @@
     <div class="card">
         <div id="offlineAlert">⚠️ Sin conexión a Internet. Los datos se guardarán localmente.</div>
 
-        <img src="PEGAR_AQUI_EL_LINK_DE_TU_LOGO" alt="Logo de la App" class="logo" id="logoApp">
+        <img src="logo.png?v=2" alt="Logo de la App" class="logo" id="logoApp" onerror="this.style.display='none'">
 
         <div id="loginSection">
             <h2>Ingreso al Sistema</h2>
@@ -238,16 +238,16 @@
         });
         document.getElementById('loginForm').onsubmit = e => {
             e.preventDefault();
-            auth.signInWithEmailAndPassword(document.getElementById('email').value, document.getElementById('password').value).catch(() => alert("Error"));
+            auth.signInWithEmailAndPassword(document.getElementById('email').value, document.getElementById('password').value).catch(() => alert("Error al iniciar sesión"));
         };
         document.getElementById('registerForm').onsubmit = async e => {
             e.preventDefault();
             const p = document.getElementById('regPassword').value;
-            if(p !== document.getElementById('regConfirmPassword').value) return alert("Error claves");
+            if(p !== document.getElementById('regConfirmPassword').value) return alert("Las contraseñas no coinciden");
             try {
                 const res = await auth.createUserWithEmailAndPassword(document.getElementById('regEmail').value, p);
                 await res.user.updateProfile({ displayName: document.getElementById('regNombre').value + " " + document.getElementById('regApellido').value });
-                alert("Cuenta creada.");
+                alert("Cuenta creada exitosamente.");
             } catch(e) { alert(e.message); }
         };
         function cerrarSesion() { auth.signOut(); location.reload(); }
@@ -329,7 +329,7 @@
         async function confirmarGuardado() {
             const nom = document.getElementById('resNombre').value;
             const ced = document.getElementById('resCedula').value;
-            if(!nom || !ced || !document.getElementById('checkFisico').checked) return alert("Faltan datos o verificación");
+            if(!nom || !ced || !document.getElementById('checkFisico').checked) return alert("Faltan datos o confirmación de verificación física.");
 
             const motivos = Array.from(document.querySelectorAll('input[name="motivoItem"]:checked')).map(cb => cb.value).join(' | ');
             
@@ -345,9 +345,9 @@
             try {
                 await db.collection("escaneos").add(payload);
                 fetch(URL_GOOGLE, { method: 'POST', mode: 'no-cors', body: JSON.stringify(payload) });
-                alert("✅ Registro guardado.");
+                alert("✅ Registro guardado con éxito.");
                 resetEscaneo();
-            } catch(e) { alert("Error"); }
+            } catch(e) { alert("Error al guardar: " + e.message); }
         }
 
         async function exportarExcel() {
