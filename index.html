@@ -116,10 +116,22 @@
             <div id="resultados">
                 <label class="label-res">NOMBRE Y APELLIDO *:</label>
                 <input type="text" id="resNombre" class="editable-input" style="font-weight: bold;">
+                
                 <label class="label-res">NÚMERO DE CÉDULA *:</label>
                 <input type="number" id="resCedula" class="editable-input" style="font-weight: bold;">
+                
                 <label class="label-res">NÚMERO DE CELULAR *:</label>
                 <input type="tel" id="resCelular" class="editable-input">
+
+                <div style="display: flex; gap: 15px; align-items: center; margin-top: 15px; margin-bottom: 5px;">
+                    <div style="flex: 2;">
+                        <input type="text" id="resNacimiento" class="editable-input" placeholder="07/06/1993" style="margin-bottom: 0; text-align: center; font-weight: bold;" oninput="calcularEdad()">
+                    </div>
+                    <div style="flex: 1; display: flex; align-items: center; gap: 10px;">
+                        <span style="font-weight: bold; color: var(--dark); font-size: 15px;">Edad:</span>
+                        <input type="number" id="resEdad" class="editable-input" style="margin-bottom: 0; font-weight: bold; text-align: center; font-size: 20px; color: var(--primary);" readonly>
+                    </div>
+                </div>
 
                 <hr style="border: 0.5px solid #eee; margin: 20px 0;">
 
@@ -255,6 +267,33 @@
         };
         function cerrarSesion() { auth.signOut(); location.reload(); }
 
+        // 🌟 FUNCIÓN PARA CALCULAR LA EDAD AUTOMÁTICAMENTE 🌟
+        function calcularEdad() {
+            const nacInput = document.getElementById('resNacimiento').value.trim();
+            const edadInput = document.getElementById('resEdad');
+            
+            // Busca formato DD/MM/AAAA o DD-MM-AAAA
+            const partes = nacInput.match(/(\d{2})[-/](\d{2})[-/](\d{4})/);
+            if (partes) {
+                const dia = parseInt(partes[1], 10);
+                const mes = parseInt(partes[2], 10) - 1; // Los meses en JS empiezan en 0
+                const anio = parseInt(partes[3], 10);
+                
+                const fechaNac = new Date(anio, mes, dia);
+                const hoy = new Date();
+                
+                let edad = hoy.getFullYear() - fechaNac.getFullYear();
+                const m = hoy.getMonth() - fechaNac.getMonth();
+                
+                if (m < 0 || (m === 0 && hoy.getDate() < fechaNac.getDate())) {
+                    edad--;
+                }
+                edadInput.value = edad >= 0 ? edad : "";
+            } else {
+                edadInput.value = "";
+            }
+        }
+
         async function encenderCamara() {
             try {
                 const s = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment", width: { ideal: 1280 } } });
@@ -292,12 +331,14 @@
                 const txt = res.data.text.toUpperCase();
                 const lineas = txt.split('\n').map(l => l.trim()).filter(l => l.length > 2);
 
+                // --- 1. Extraer Cédula ---
                 let cedulaFinal = "";
                 const numerosEncontrados = txt.match(/\b\d{6,8}\b/g);
                 if (numerosEncontrados && numerosEncontrados.length > 0) {
                     cedulaFinal = numerosEncontrados[0]; 
                 }
 
+                // --- 2. Extraer Nombres y Apellidos ---
                 let apellidos = "", nombres = "";
                 for(let i = 0; i < lineas.length; i++) {
                     let lineaActual = lineas[i];
@@ -315,8 +356,29 @@
                     }
                 }
 
+                // --- 3. Extraer Fecha de Nacimiento ---
+                let fechaNacDetectada = "";
+                const posiblesFechas = txt.match(/\b\d{2}[-/]\d{2}[-/]\d{4}\b/g);
+                if (posiblesFechas) {
+                    const yearActual = new Date().getFullYear();
+                    for (let f of posiblesFechas) {
+                        let anio = parseInt(f.slice(-4));
+                        // La fecha de nacimiento siempre es menor o igual al año actual
+                        if (anio <= yearActual) {
+                            fechaNacDetectada = f.replace(/-/g, '/');
+                            break;
+                        }
+                    }
+                    if(!fechaNacDetectada && posiblesFechas.length > 0) {
+                        fechaNacDetectada = posiblesFechas[0].replace(/-/g, '/');
+                    }
+                }
+
+                // --- Llenar los campos ---
                 document.getElementById('resNombre').value = (apellidos + " " + nombres).trim();
                 document.getElementById('resCedula').value = cedulaFinal;
+                document.getElementById('resNacimiento').value = fechaNacDetectada;
+                calcularEdad(); // Calcula la edad automáticamente
 
             } catch (e) { console.log("Error OCR:", e); }
             
@@ -327,12 +389,16 @@
         function resetEscaneo() {
             document.getElementById('resultados').style.display = 'none';
             document.getElementById('cameraView').style.display = 'block';
+            document.getElementById('resNacimiento').value = "";
+            document.getElementById('resEdad').value = "";
         }
 
         async function confirmarGuardado() {
             const nom = document.getElementById('resNombre').value.trim();
             const ced = document.getElementById('resCedula').value.trim();
             const cel = document.getElementById('resCelular').value.trim();
+            const fechaNac = document.getElementById('resNacimiento').value.trim();
+            const edadCalc = document.getElementById('resEdad').value.trim();
             const evento = document.getElementById('resEvento').value;
             
             if(!nom || !ced || !document.getElementById('checkFisico').checked) return alert("Faltan datos o confirmación de verificación física.");
@@ -346,11 +412,12 @@
             const comentario = document.getElementById('resComentario').value.trim();
             const operador = auth.currentUser.displayName || auth.currentUser.email;
 
-            // ESTE ES EL FORMATO QUE ORDENA TU EXCEL MAGNÍFICAMENTE
             const payload = {
                 nombre_cedula: nom, 
                 numero_cedula: ced, 
                 celular_cliente: cel,
+                fecha_nacimiento: fechaNac || "N/A",
+                edad: edadCalc || "N/A",
                 evento: evento,
                 correo_cliente: correoCliente || "Sin correo",
                 producto_nuevo: productoNuevo,
@@ -361,9 +428,10 @@
                 operador_sistema: operador
             };
 
-            // Esto es lo que se envía a Google Sheets
             const payloadGoogle = {
-                nombre: nom, cedula: ced, celular: cel, evento: evento, correo: correoCliente,
+                nombre: nom, cedula: ced, celular: cel, 
+                fecha_nacimiento: fechaNac, edad: edadCalc,
+                evento: evento, correo: correoCliente,
                 producto: productoNuevo, motivos: motivosSeleccionados, operador: operador,
                 fecha: new Date().toLocaleDateString(), hora: new Date().toLocaleTimeString(),
                 codigo_tarjeta: codigoTarjeta, comentarios: comentario
@@ -377,7 +445,6 @@
             } catch(e) { alert("Error al guardar: " + e.message); }
         }
 
-        // 🌟 AQUÍ ESTÁ TU SÚPER FUNCIÓN DE EXCEL RESTAURADA 🌟
         async function exportarExcel() {
             if (!navigator.onLine) {
                 return alert("⚠️ Necesitas conexión a internet para descargar el Excel completo.");
@@ -418,6 +485,8 @@
                     "Nombre y Apellido": data.nombre_cedula || data.nombre || "---",
                     "Nro. de Cédula": data.numero_cedula || data.cedula || "---",
                     "Celular Cliente": data.celular_cliente || data.celular || "---",
+                    "Fecha de Nac.": data.fecha_nacimiento || "---",
+                    "Edad": data.edad || "---",
                     "Correo Cliente": data.correo_cliente || data.correo || "---",
                     "¿Producto Nuevo?": data.producto_nuevo || data.producto || "---"
                 };
@@ -436,9 +505,11 @@
             const ws = XLSX.utils.json_to_sheet(registrosOrdenados);
             const wb = XLSX.utils.book_new();
             
+            // Ajustamos el ancho de las columnas (incluyendo las nuevas de fecha nac y edad)
             let anchosColumnas = [ 
                 { wch: 12 }, { wch: 10 }, { wch: 25 }, { wch: 30 }, 
-                { wch: 15 }, { wch: 25 }, { wch: 18 } 
+                { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 8 }, 
+                { wch: 25 }, { wch: 18 } 
             ];
             for (let i = 0; i < maxMotivos; i++) { anchosColumnas.push({ wch: 35 }); }
             anchosColumnas.push({ wch: 20 }, { wch: 45 }, { wch: 25 });
