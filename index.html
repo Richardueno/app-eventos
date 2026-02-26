@@ -114,13 +114,13 @@
             <div id="loading" style="display:none; margin: 20px; font-weight: bold; color: var(--primary);">⌛ PROCESANDO...</div>
 
             <div id="resultados">
-                <label class="label-res">NOMBRE Y APELLIDO *:</label>
+                <label class="label-res">NOMBRE Y APELLIDO:</label>
                 <input type="text" id="resNombre" class="editable-input" style="font-weight: bold;">
                 
-                <label class="label-res">NÚMERO DE CÉDULA *:</label>
+                <label class="label-res">NÚMERO DE CÉDULA:</label>
                 <input type="number" id="resCedula" class="editable-input" style="font-weight: bold;">
                 
-                <label class="label-res">NÚMERO DE CELULAR *:</label>
+                <label class="label-res">NÚMERO DE CELULAR:</label>
                 <input type="tel" id="resCelular" class="editable-input">
 
                 <div style="display: flex; gap: 10px; align-items: center; margin-top: 15px; margin-bottom: 5px;">
@@ -135,7 +135,7 @@
 
                 <hr style="border: 0.5px solid #eee; margin: 20px 0;">
 
-                <label class="label-res">NOMBRE DEL EVENTO *:</label>
+                <label class="label-res">NOMBRE DEL EVENTO:</label>
                 <div class="event-container">
                     <select id="resEvento" class="editable-input"></select>
                     <button type="button" class="btn-mini" style="background: #3498db;" onclick="agregarEvento()">➕</button>
@@ -145,13 +145,13 @@
                 <label class="label-res">CORREO ELECTRÓNICO:</label>
                 <input type="email" id="resCorreoCliente" class="editable-input">
 
-                <label class="label-res">¿PRODUCTO NUEVO? *</label>
+                <label class="label-res">¿PRODUCTO NUEVO?</label>
                 <div class="radio-group">
                     <label><input type="radio" name="resProducto" value="SI"> SI</label>
                     <label><input type="radio" name="resProducto" value="No" checked> No</label>
                 </div>
 
-                <label class="label-res">MOTIVO DE ATENCIÓN *:</label>
+                <label class="label-res">MOTIVO DE ATENCIÓN:</label>
                 <div class="checkbox-group" id="contenedorMotivos"></div>
 
                 <label class="label-res">CÓD. TARJETA (CAJA):</label>
@@ -267,9 +267,8 @@
         };
         function cerrarSesion() { auth.signOut(); location.reload(); }
 
-        // 🌟 FUNCIÓN PARA PONER BARRAS AUTOMÁTICAMENTE 🌟
         function formatearFecha(input) {
-            let v = input.value.replace(/\D/g, ''); // Deja solo números
+            let v = input.value.replace(/\D/g, ''); 
             if (v.length > 2 && v.length <= 4) {
                 v = v.substring(0, 2) + '/' + v.substring(2);
             } else if (v.length > 4) {
@@ -280,7 +279,7 @@
             if (v.length === 10) {
                 calcularEdad();
             } else {
-                document.getElementById('resEdad').value = ""; // Borra la edad si la fecha no está completa
+                document.getElementById('resEdad').value = ""; 
             }
         }
 
@@ -411,40 +410,43 @@
             const edadCalc = document.getElementById('resEdad').value.trim();
             const evento = document.getElementById('resEvento').value;
             
-            if(!nom || !ced || !document.getElementById('checkFisico').checked) return alert("Faltan datos o confirmación de verificación física.");
+            // YA NO ES OBLIGATORIO LLENAR TODO
+            // Se eliminó la validación que frenaba el guardado.
 
             const checksMotivos = document.querySelectorAll('input[name="motivoItem"]:checked');
             const motivosSeleccionados = Array.from(checksMotivos).map(cb => cb.value).join(' | ');
             
             const correoCliente = document.getElementById('resCorreoCliente').value.trim();
-            const productoNuevo = document.querySelector('input[name="resProducto"]:checked').value;
+            const productoNuevoElement = document.querySelector('input[name="resProducto"]:checked');
+            const productoNuevo = productoNuevoElement ? productoNuevoElement.value : "No";
             const codigoTarjeta = document.getElementById('resCodigoTarjeta').value.trim();
             const comentario = document.getElementById('resComentario').value.trim();
-            const operador = auth.currentUser.displayName || auth.currentUser.email;
+            const operador = auth.currentUser ? (auth.currentUser.displayName || auth.currentUser.email) : "Desconocido";
 
+            // Aseguramos que el excel no quede con huecos rotos si falta algo
             const payload = {
-                nombre_cedula: nom, 
-                numero_cedula: ced, 
-                celular_cliente: cel,
-                fecha_nacimiento: fechaNac || "N/A",
-                edad: edadCalc || "N/A",
-                evento: evento,
-                correo_cliente: correoCliente || "Sin correo",
+                nombre_cedula: nom || "---", 
+                numero_cedula: ced || "---", 
+                celular_cliente: cel || "---",
+                fecha_nacimiento: fechaNac || "---",
+                edad: edadCalc || "---",
+                evento: evento || "---",
+                correo_cliente: correoCliente || "---",
                 producto_nuevo: productoNuevo,
-                motivos: motivosSeleccionados,
-                codigo_tarjeta: codigoTarjeta || "N/A",
-                comentarios: comentario || "Sin comentarios",
+                motivos: motivosSeleccionados || "---",
+                codigo_tarjeta: codigoTarjeta || "---",
+                comentarios: comentario || "---",
                 fecha: new Date().toLocaleString(), 
                 operador_sistema: operador
             };
 
             const payloadGoogle = {
-                nombre: nom, cedula: ced, celular: cel, 
-                fecha_nacimiento: fechaNac, edad: edadCalc,
-                evento: evento, correo: correoCliente,
-                producto: productoNuevo, motivos: motivosSeleccionados, operador: operador,
+                nombre: nom || "---", cedula: ced || "---", celular: cel || "---", 
+                fecha_nacimiento: fechaNac || "---", edad: edadCalc || "---",
+                evento: evento || "---", correo: correoCliente || "---",
+                producto: productoNuevo, motivos: motivosSeleccionados || "---", operador: operador,
                 fecha: new Date().toLocaleDateString(), hora: new Date().toLocaleTimeString(),
-                codigo_tarjeta: codigoTarjeta, comentarios: comentario
+                codigo_tarjeta: codigoTarjeta || "---", comentarios: comentario || "---"
             };
 
             try {
@@ -468,7 +470,7 @@
             snap.forEach(doc => {
                 const data = doc.data();
                 let arrayMotivos = [];
-                if (data.motivos) {
+                if (data.motivos && data.motivos !== "---") {
                     arrayMotivos = data.motivos.split(' | ').filter(m => m.trim() !== "");
                 }
                 if (arrayMotivos.length > maxMotivos) { maxMotivos = arrayMotivos.length; }
