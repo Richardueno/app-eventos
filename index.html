@@ -123,13 +123,13 @@
                 <label class="label-res">NÚMERO DE CELULAR *:</label>
                 <input type="tel" id="resCelular" class="editable-input">
 
-                <div style="display: flex; gap: 15px; align-items: center; margin-top: 15px; margin-bottom: 5px;">
-                    <div style="flex: 2;">
-                        <input type="text" id="resNacimiento" class="editable-input" placeholder="07/06/1993" style="margin-bottom: 0; text-align: center; font-weight: bold;" oninput="calcularEdad()">
+                <div style="display: flex; gap: 10px; align-items: center; margin-top: 15px; margin-bottom: 5px;">
+                    <div style="flex: 1.5;">
+                        <input type="text" id="resNacimiento" class="editable-input" placeholder="DD/MM/AAAA" inputmode="numeric" style="margin-bottom: 0; text-align: center; font-weight: bold; letter-spacing: 2px;" oninput="formatearFecha(this)">
                     </div>
-                    <div style="flex: 1; display: flex; align-items: center; gap: 10px;">
+                    <div style="flex: 1; display: flex; align-items: center; gap: 5px; justify-content: flex-end;">
                         <span style="font-weight: bold; color: var(--dark); font-size: 15px;">Edad:</span>
-                        <input type="number" id="resEdad" class="editable-input" style="margin-bottom: 0; font-weight: bold; text-align: center; font-size: 20px; color: var(--primary);" readonly>
+                        <input type="text" id="resEdad" class="editable-input" style="margin-bottom: 0; font-weight: bold; text-align: center; font-size: 22px; color: var(--primary); padding: 10px 5px; width: 70px; flex-shrink: 0;" readonly>
                     </div>
                 </div>
 
@@ -267,16 +267,31 @@
         };
         function cerrarSesion() { auth.signOut(); location.reload(); }
 
-        // 🌟 FUNCIÓN PARA CALCULAR LA EDAD AUTOMÁTICAMENTE 🌟
+        // 🌟 FUNCIÓN PARA PONER BARRAS AUTOMÁTICAMENTE 🌟
+        function formatearFecha(input) {
+            let v = input.value.replace(/\D/g, ''); // Deja solo números
+            if (v.length > 2 && v.length <= 4) {
+                v = v.substring(0, 2) + '/' + v.substring(2);
+            } else if (v.length > 4) {
+                v = v.substring(0, 2) + '/' + v.substring(2, 4) + '/' + v.substring(4, 8);
+            }
+            input.value = v;
+
+            if (v.length === 10) {
+                calcularEdad();
+            } else {
+                document.getElementById('resEdad').value = ""; // Borra la edad si la fecha no está completa
+            }
+        }
+
         function calcularEdad() {
             const nacInput = document.getElementById('resNacimiento').value.trim();
             const edadInput = document.getElementById('resEdad');
             
-            // Busca formato DD/MM/AAAA o DD-MM-AAAA
             const partes = nacInput.match(/(\d{2})[-/](\d{2})[-/](\d{4})/);
             if (partes) {
                 const dia = parseInt(partes[1], 10);
-                const mes = parseInt(partes[2], 10) - 1; // Los meses en JS empiezan en 0
+                const mes = parseInt(partes[2], 10) - 1; 
                 const anio = parseInt(partes[3], 10);
                 
                 const fechaNac = new Date(anio, mes, dia);
@@ -331,14 +346,12 @@
                 const txt = res.data.text.toUpperCase();
                 const lineas = txt.split('\n').map(l => l.trim()).filter(l => l.length > 2);
 
-                // --- 1. Extraer Cédula ---
                 let cedulaFinal = "";
                 const numerosEncontrados = txt.match(/\b\d{6,8}\b/g);
                 if (numerosEncontrados && numerosEncontrados.length > 0) {
                     cedulaFinal = numerosEncontrados[0]; 
                 }
 
-                // --- 2. Extraer Nombres y Apellidos ---
                 let apellidos = "", nombres = "";
                 for(let i = 0; i < lineas.length; i++) {
                     let lineaActual = lineas[i];
@@ -356,14 +369,12 @@
                     }
                 }
 
-                // --- 3. Extraer Fecha de Nacimiento ---
                 let fechaNacDetectada = "";
                 const posiblesFechas = txt.match(/\b\d{2}[-/]\d{2}[-/]\d{4}\b/g);
                 if (posiblesFechas) {
                     const yearActual = new Date().getFullYear();
                     for (let f of posiblesFechas) {
                         let anio = parseInt(f.slice(-4));
-                        // La fecha de nacimiento siempre es menor o igual al año actual
                         if (anio <= yearActual) {
                             fechaNacDetectada = f.replace(/-/g, '/');
                             break;
@@ -374,11 +385,10 @@
                     }
                 }
 
-                // --- Llenar los campos ---
                 document.getElementById('resNombre').value = (apellidos + " " + nombres).trim();
                 document.getElementById('resCedula').value = cedulaFinal;
                 document.getElementById('resNacimiento').value = fechaNacDetectada;
-                calcularEdad(); // Calcula la edad automáticamente
+                calcularEdad();
 
             } catch (e) { console.log("Error OCR:", e); }
             
@@ -505,11 +515,10 @@
             const ws = XLSX.utils.json_to_sheet(registrosOrdenados);
             const wb = XLSX.utils.book_new();
             
-            // Ajustamos el ancho de las columnas (incluyendo las nuevas de fecha nac y edad)
             let anchosColumnas = [ 
                 { wch: 12 }, { wch: 10 }, { wch: 25 }, { wch: 30 }, 
-                { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 8 }, 
-                { wch: 25 }, { wch: 18 } 
+                { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 25 }, 
+                { wch: 18 } 
             ];
             for (let i = 0; i < maxMotivos; i++) { anchosColumnas.push({ wch: 35 }); }
             anchosColumnas.push({ wch: 20 }, { wch: 45 }, { wch: 25 });
