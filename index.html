@@ -151,8 +151,27 @@
                     <label><input type="radio" name="resProducto" value="No" checked> No</label>
                 </div>
 
-                <label class="label-res">MOTIVO DE ATENCIÓN:</label>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 15px; margin-bottom: 5px;">
+                    <label class="label-res" style="margin:0;">MOTIVO DE ATENCIÓN:</label>
+                    <button type="button" id="btnEditarMotivos" class="btn-mini" style="background: #34495e; padding: 5px 10px; font-size: 12px; border-radius: 5px;" onclick="alternarEditorMotivos()">⚙️ EDITAR</button>
+                </div>
+
                 <div class="checkbox-group" id="contenedorMotivos"></div>
+
+                <div id="editorMotivosContainer" style="display: none; border: 1px solid #bdc3c7; padding: 15px; border-radius: 10px; background: #fafafa; margin-bottom: 15px;">
+                    <div id="listaEditorMotivos" style="max-height: 200px; overflow-y: auto; margin-bottom: 10px; text-align: left;">
+                        </div>
+                    
+                    <div style="display: flex; gap: 5px; margin-bottom: 15px;">
+                        <input type="text" id="nuevoMotivoTexto" placeholder="Nuevo motivo..." style="flex: 1; padding: 12px; margin:0; border-radius: 8px; border: 1px solid #ddd;">
+                        <button type="button" class="btn-mini" style="background: #27ae60; padding: 12px; border-radius: 8px;" onclick="agregarMotivoEditor()">➕</button>
+                    </div>
+
+                    <div style="display: flex; gap: 10px;">
+                      <button type="button" class="btn" style="background: var(--dark); margin:0; flex:1;" onclick="guardarCambiosMotivos()">✅ GUARDAR CAMBIOS</button>
+                      <button type="button" class="btn" style="background: #e74c3c; margin:0; flex:1;" onclick="cancelarEditorMotivos()">❌ CANCELAR</button>
+                    </div>
+                </div>
 
                 <label class="label-res">CÓD. TARJETA (CAJA):</label>
                 <input type="text" id="resCodigoTarjeta" class="editable-input">
@@ -218,7 +237,8 @@
             }
         }
 
-        const MOTIVOS = [
+        // 🌟 LISTA DE MOTIVOS PREDETERMINADA 🌟
+        const MOTIVOS_DEFAULT = [
             "Consultas (especificar en comentario)", "Onboarding sin retiro de tarjeta", "Onboarding con retiro de tarjetas",
             "Solo vinculación de tarjeta", "Activación de TC y TD", "Firma de CU", "TC Albirroja nueva",
             "Error al vincular la tarjeta", "Inconveniente con registro en la App", "Solicitud de oferta TC denegada",
@@ -227,10 +247,130 @@
             "Error al ingresar en la app", "Vinculación de Alias", "Actualización de Fé de vida", "Cambio entidad bancaria jubilados",
             "Nuevo Jubilado", "Otro"
         ];
-        const cont = document.getElementById('contenedorMotivos');
-        MOTIVOS.forEach(m => {
-            cont.innerHTML += `<label class="checkbox-item"><input type="checkbox" name="motivoItem" value="${m}"> ${m}</label>`;
-        });
+
+        // Global para guardar los motivos temporalmente mientras se editan
+        let motivosEdicionActual = [];
+
+        // Función para cargar los motivos (normales o desde memoria)
+        function cargarMotivosChecks() {
+            const motivosMemoria = localStorage.getItem('listaMotivosGestionPY');
+            const misMotivos = motivosMemoria ? JSON.parse(motivosMemoria) : MOTIVOS_DEFAULT;
+
+            const cont = document.getElementById('contenedorMotivos');
+            cont.innerHTML = ""; // Limpiar
+            
+            if (misMotivos.length === 0) {
+                cont.innerHTML = '<p style="font-size:12px; color:#7f8c8d; padding:10px;">No hay motivos configurados. Toca en EDITAR para agregar uno.</p>';
+                return;
+            }
+
+            misMotivos.forEach(m => {
+                cont.innerHTML += `<label class="checkbox-item"><input type="checkbox" name="motivoItem" value="${m}"> ${m}</label>`;
+            });
+        }
+
+        // 🌟 FUNCIONES DEL EDITOR DE MOTIVOS 🌟
+
+        function alternarEditorMotivos() {
+            const contChedklist = document.getElementById('contenedorMotivos');
+            const contEditor = document.getElementById('editorMotivosContainer');
+            const btnEditor = document.getElementById('btnEditarMotivos');
+
+            // Cargar motivos actuales en la variable temporal de edición
+            const motivosMemoria = localStorage.getItem('listaMotivosGestionPY');
+            motivosEdicionActual = motivosMemoria ? JSON.parse(motivosMemoria) : [...MOTIVOS_DEFAULT]; // Usar copia si es default
+
+            renderizarListaEditor();
+
+            // Intercambiar vistas
+            contChedklist.style.display = 'none';
+            contEditor.style.display = 'block';
+            btnEditor.style.display = 'none'; // Ocultar botón editar
+        }
+
+        function cancelarEditorMotivos() {
+            const contChedklist = document.getElementById('contenedorMotivos');
+            const contEditor = document.getElementById('editorMotivosContainer');
+            const btnEditor = document.getElementById('btnEditarMotivos');
+
+            // Intercambiar vistas de vuelta
+            contChedklist.style.display = 'block';
+            contEditor.style.display = 'none';
+            btnEditor.style.display = 'block'; // Volver a mostrar botón editar
+            
+            document.getElementById('nuevoMotivoTexto').value = ""; // Limpiar input
+        }
+
+        // Dibuja la lista de motivos con inputs y botones de borrar dentro del editor
+        function renderizarListaEditor() {
+            const contLista = document.getElementById('listaEditorMotivos');
+            contLista.innerHTML = ""; // Limpiar
+
+            if (motivosEdicionActual.length === 0) {
+                contLista.innerHTML = '<p style="font-size:13px; color:#7f8c8d; text-align:center; padding:10px;">La lista está vacía. Agrega un motivo abajo.</p>';
+                return;
+            }
+
+            motivosEdicionActual.forEach((m, index) => {
+                contLista.innerHTML += `
+                    <div style="display: flex; gap: 5px; margin-bottom: 8px; align-items: center; border-bottom: 1px solid #eee; padding-bottom: 8px;">
+                        <input type="text" value="${m}" style="flex: 1; padding: 10px; margin:0; border-radius: 5px; border: 1px solid #ccc; font-size:14px;" 
+                               onchange="actualizarTextoMotivoTemp(${index}, this.value)">
+                        <button type="button" class="btn-mini" style="background: #e74c3c; padding: 10px; border-radius: 5px;" 
+                                onclick="eliminarMotivoEditor(${index})">🗑️</button>
+                    </div>
+                `;
+            });
+        }
+
+        // Actualiza el texto en la variable temporal cuando el usuario escribe en un input del editor
+        function actualizarTextoMotivoTemp(index, nuevoTexto) {
+            const textoLimpio = nuevoTexto.trim();
+            if (textoLimpio) {
+                motivosEdicionActual[index] = textoLimpio;
+            } else {
+                // Si el usuario deja el campo vacío, lo borramos al guardar o podemos borrarlo ahora
+                // Por simplicidad, lo dejamos y lo filtramos al guardar.
+                motivosEdicionActual[index] = ""; 
+            }
+        }
+
+        function agregarMotivoEditor() {
+            const input = document.getElementById('nuevoMotivoTexto');
+            const texto = input.value.trim();
+            
+            if (!texto) return alert("Escribe algo en el campo de texto.");
+
+            motivosEdicionActual.push(texto);
+            input.value = ""; // Limpiar
+            renderizarListaEditor();
+        }
+
+        function eliminarMotivoEditor(index) {
+            if (confirm(`¿Eliminar el motivo: "${motivosEdicionActual[index]}"?`)) {
+                motivosEdicionActual.splice(index, 1);
+                renderizarListaEditor();
+            }
+        }
+
+        function guardarCambiosMotivos() {
+            // Filtrar cualquier motivo que haya quedado vacío por error del usuario al editar
+            const motivosFinales = motivosEdicionActual.map(m => m.trim()).filter(m => m !== "");
+            
+            if (motivosFinales.length === 0 && motivosEdicionActual.length > 0) {
+                if(!confirm("Parece que borraste el texto de todos los motivos. ¿Deseas guardar la lista vacía?")) return;
+            }
+
+            // Guardar en localStorage de forma permanente
+            localStorage.setItem('listaMotivosGestionPY', JSON.stringify(motivosFinales));
+            
+            // Recargar la vista normal de checks
+            cargarMotivosChecks();
+            cancelarEditorMotivos(); // Cerrar editor
+            alert("✅ Lista de motivos actualizada correctamente.");
+        }
+
+        // 🌟 FIN FUNCIONES EDITOR 🌟
 
         function cambiarPantalla(p) {
             document.getElementById('loginSection').style.display = 'none';
@@ -247,7 +387,9 @@
             if (u) {
                 cambiarPantalla('scannerSection');
                 document.getElementById('welcomeMsg').innerText = "Bienvenido: " + (u.displayName || u.email);
-                encenderCamara(); cargarEventos();
+                encenderCamara(); 
+                cargarEventos();
+                cargarMotivosChecks(); // Cargar motivos al iniciar
             }
         });
         
@@ -410,9 +552,6 @@
             const edadCalc = document.getElementById('resEdad').value.trim();
             const evento = document.getElementById('resEvento').value;
             
-            // YA NO ES OBLIGATORIO LLENAR TODO
-            // Se eliminó la validación que frenaba el guardado.
-
             const checksMotivos = document.querySelectorAll('input[name="motivoItem"]:checked');
             const motivosSeleccionados = Array.from(checksMotivos).map(cb => cb.value).join(' | ');
             
@@ -423,7 +562,6 @@
             const comentario = document.getElementById('resComentario').value.trim();
             const operador = auth.currentUser ? (auth.currentUser.displayName || auth.currentUser.email) : "Desconocido";
 
-            // Aseguramos que el excel no quede con huecos rotos si falta algo
             const payload = {
                 nombre_cedula: nom || "---", 
                 numero_cedula: ced || "---", 
