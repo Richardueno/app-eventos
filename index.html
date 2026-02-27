@@ -76,7 +76,10 @@
                 </div>
                 <button type="submit" class="btn">INGRESAR</button>
             </form>
-            <button class="btn-link" onclick="cambiarPantalla('registerSection')">¿No tienes cuenta? Regístrate aquí</button>
+            
+            <button type="button" class="btn-link" style="color: #e74c3c; font-size: 14px; margin-top: 15px;" onclick="recuperarContrasena()">¿Olvidaste tu contraseña?</button>
+            
+            <button type="button" class="btn-link" onclick="cambiarPantalla('registerSection')">¿No tienes cuenta? Regístrate aquí</button>
         </div>
 
         <div id="registerSection" style="display: none;">
@@ -97,7 +100,7 @@
                 </div>
                 <button type="submit" class="btn" style="background: #3498db;">REGISTRARME</button>
             </form>
-            <button class="btn-link" style="color: #27ae60;" onclick="cambiarPantalla('loginSection')">¿Ya tienes cuenta? Inicia sesión</button>
+            <button type="button" class="btn-link" style="color: #27ae60;" onclick="cambiarPantalla('loginSection')">¿Ya tienes cuenta? Inicia sesión</button>
         </div>
 
         <div id="scannerSection" style="display: none;">
@@ -198,7 +201,6 @@
         // 🌟 CONFIGURACIÓN DEL ADMINISTRADOR 🌟
         const ADMIN_EMAILS = ["richardmoisespena@gmail.com"]; 
 
-
         const firebaseConfig = {
             apiKey: "AIzaSyAE1KBu1CufjKO65OpVHOPcmhyliQYsoDU",
             authDomain: "miescanerweb.firebaseapp.com",
@@ -212,6 +214,27 @@
         const db = firebase.firestore();
 
         const URL_GOOGLE = 'https://script.google.com/a/macros/ueno.com.py/s/AKfycbwltAbV25PBEiCkCU5YCOb-4upps3eO6dzPwxH1ANtgT17VCOkrDQfifzpF2myDWXbt/exec';
+
+        // 🌟 FUNCIÓN DE RECUPERAR CONTRASEÑA 🌟
+        async function recuperarContrasena() {
+            const emailInput = document.getElementById('email').value.trim();
+            if (!emailInput) {
+                alert("Primero escribe tu correo electrónico en el campo de arriba y luego presiona este botón.");
+                return;
+            }
+            try {
+                await auth.sendPasswordResetEmail(emailInput);
+                alert(`Te hemos enviado un enlace para cambiar tu contraseña al correo:\n${emailInput}\n\nPor favor, revisa tu bandeja de entrada o la carpeta de Spam.`);
+            } catch (error) {
+                if (error.code === 'auth/user-not-found') {
+                    alert("No hay ninguna cuenta registrada con ese correo electrónico.");
+                } else if (error.code === 'auth/invalid-email') {
+                    alert("El formato del correo electrónico no es válido.");
+                } else {
+                    alert("Ocurrió un error: " + error.message);
+                }
+            }
+        }
 
         const EVENTOS_DEFAULT = ["Oficina del IPS", "Playa San Jose", "Xpo Casa ueno San Bernardino", "Rakiura", "Otros"];
         function cargarEventos() {
@@ -231,7 +254,7 @@
         }
         function eliminarEvento() {
             let v = document.getElementById('resEvento').value;
-            if (v && confirm("¿Eliminar?")) {
+            if (v && confirm("¿Eliminar evento seleccionado?")) {
                 let evs = (JSON.parse(localStorage.getItem('listaEventosPY')) || EVENTOS_DEFAULT).filter(e => e !== v);
                 localStorage.setItem('listaEventosPY', JSON.stringify(evs));
                 cargarEventos();
@@ -345,11 +368,9 @@
                 cambiarPantalla('scannerSection');
                 document.getElementById('welcomeMsg').innerText = "Bienvenido: " + (u.displayName || u.email);
                 
-                // --- SEGURIDAD DE ADMINISTRADOR ---
                 const emailUsuario = u.email.toLowerCase();
                 const esAdmin = ADMIN_EMAILS.includes(emailUsuario);
                 
-                // Mostrar/Ocultar controles según rol
                 document.getElementById('btnSumarEvento').style.display = esAdmin ? 'inline-block' : 'none';
                 document.getElementById('btnRestarEvento').style.display = esAdmin ? 'inline-block' : 'none';
                 document.getElementById('btnEditarMotivos').style.display = esAdmin ? 'inline-block' : 'none';
