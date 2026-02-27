@@ -138,8 +138,8 @@
                 <label class="label-res">NOMBRE DEL EVENTO:</label>
                 <div class="event-container">
                     <select id="resEvento" class="editable-input"></select>
-                    <button type="button" class="btn-mini" style="background: #3498db;" onclick="agregarEvento()">➕</button>
-                    <button type="button" class="btn-mini" style="background: #e74c3c;" onclick="eliminarEvento()">🗑️</button>
+                    <button type="button" id="btnSumarEvento" class="btn-mini" style="background: #3498db;" onclick="agregarEvento()">➕</button>
+                    <button type="button" id="btnRestarEvento" class="btn-mini" style="background: #e74c3c;" onclick="eliminarEvento()">🗑️</button>
                 </div>
 
                 <label class="label-res">CORREO ELECTRÓNICO:</label>
@@ -159,14 +159,11 @@
                 <div class="checkbox-group" id="contenedorMotivos"></div>
 
                 <div id="editorMotivosContainer" style="display: none; border: 1px solid #bdc3c7; padding: 15px; border-radius: 10px; background: #fafafa; margin-bottom: 15px;">
-                    <div id="listaEditorMotivos" style="max-height: 200px; overflow-y: auto; margin-bottom: 10px; text-align: left;">
-                        </div>
-                    
+                    <div id="listaEditorMotivos" style="max-height: 200px; overflow-y: auto; margin-bottom: 10px; text-align: left;"></div>
                     <div style="display: flex; gap: 5px; margin-bottom: 15px;">
                         <input type="text" id="nuevoMotivoTexto" placeholder="Nuevo motivo..." style="flex: 1; padding: 12px; margin:0; border-radius: 8px; border: 1px solid #ddd;">
                         <button type="button" class="btn-mini" style="background: #27ae60; padding: 12px; border-radius: 8px;" onclick="agregarMotivoEditor()">➕</button>
                     </div>
-
                     <div style="display: flex; gap: 10px;">
                       <button type="button" class="btn" style="background: var(--dark); margin:0; flex:1;" onclick="guardarCambiosMotivos()">✅ GUARDAR CAMBIOS</button>
                       <button type="button" class="btn" style="background: #e74c3c; margin:0; flex:1;" onclick="cancelarEditorMotivos()">❌ CANCELAR</button>
@@ -190,7 +187,7 @@
                 </div>
             </div>
 
-            <button onclick="exportarExcel()" style="background:#34495e; color:white; border:none; padding:12px; margin-top:40px; border-radius:8px; width:100%;">📊 DESCARGAR EXCEL</button>
+            <button id="btnDescargarExcel" onclick="exportarExcel()" style="background:#34495e; color:white; border:none; padding:12px; margin-top:40px; border-radius:8px; width:100%; display: none;">📊 DESCARGAR EXCEL</button>
             <button onclick="cerrarSesion()" style="background: none; border: none; color: #e74c3c; cursor: pointer; text-decoration: underline; margin-top: 20px;">Cerrar Sesión</button>
         </div>
     </div>
@@ -198,6 +195,10 @@
     <canvas id="canvas" style="display:none;"></canvas>
 
     <script>
+        // 🌟 CONFIGURACIÓN DEL ADMINISTRADOR 🌟
+        const ADMIN_EMAILS = ["richardmoisespena@gmail.com"]; 
+
+
         const firebaseConfig = {
             apiKey: "AIzaSyAE1KBu1CufjKO65OpVHOPcmhyliQYsoDU",
             authDomain: "miescanerweb.firebaseapp.com",
@@ -237,7 +238,6 @@
             }
         }
 
-        // 🌟 LISTA DE MOTIVOS PREDETERMINADA 🌟
         const MOTIVOS_DEFAULT = [
             "Consultas (especificar en comentario)", "Onboarding sin retiro de tarjeta", "Onboarding con retiro de tarjetas",
             "Solo vinculación de tarjeta", "Activación de TC y TD", "Firma de CU", "TC Albirroja nueva",
@@ -247,70 +247,48 @@
             "Error al ingresar en la app", "Vinculación de Alias", "Actualización de Fé de vida", "Cambio entidad bancaria jubilados",
             "Nuevo Jubilado", "Otro"
         ];
-
-        // Global para guardar los motivos temporalmente mientras se editan
         let motivosEdicionActual = [];
 
-        // Función para cargar los motivos (normales o desde memoria)
         function cargarMotivosChecks() {
             const motivosMemoria = localStorage.getItem('listaMotivosGestionPY');
             const misMotivos = motivosMemoria ? JSON.parse(motivosMemoria) : MOTIVOS_DEFAULT;
-
             const cont = document.getElementById('contenedorMotivos');
-            cont.innerHTML = ""; // Limpiar
-            
+            cont.innerHTML = ""; 
             if (misMotivos.length === 0) {
-                cont.innerHTML = '<p style="font-size:12px; color:#7f8c8d; padding:10px;">No hay motivos configurados. Toca en EDITAR para agregar uno.</p>';
+                cont.innerHTML = '<p style="font-size:12px; color:#7f8c8d; padding:10px;">No hay motivos configurados.</p>';
                 return;
             }
-
             misMotivos.forEach(m => {
                 cont.innerHTML += `<label class="checkbox-item"><input type="checkbox" name="motivoItem" value="${m}"> ${m}</label>`;
             });
         }
 
-        // 🌟 FUNCIONES DEL EDITOR DE MOTIVOS 🌟
-
         function alternarEditorMotivos() {
             const contChedklist = document.getElementById('contenedorMotivos');
             const contEditor = document.getElementById('editorMotivosContainer');
             const btnEditor = document.getElementById('btnEditarMotivos');
-
-            // Cargar motivos actuales en la variable temporal de edición
             const motivosMemoria = localStorage.getItem('listaMotivosGestionPY');
-            motivosEdicionActual = motivosMemoria ? JSON.parse(motivosMemoria) : [...MOTIVOS_DEFAULT]; // Usar copia si es default
-
+            motivosEdicionActual = motivosMemoria ? JSON.parse(motivosMemoria) : [...MOTIVOS_DEFAULT]; 
             renderizarListaEditor();
-
-            // Intercambiar vistas
             contChedklist.style.display = 'none';
             contEditor.style.display = 'block';
-            btnEditor.style.display = 'none'; // Ocultar botón editar
+            btnEditor.style.display = 'none'; 
         }
 
         function cancelarEditorMotivos() {
-            const contChedklist = document.getElementById('contenedorMotivos');
-            const contEditor = document.getElementById('editorMotivosContainer');
-            const btnEditor = document.getElementById('btnEditarMotivos');
-
-            // Intercambiar vistas de vuelta
-            contChedklist.style.display = 'block';
-            contEditor.style.display = 'none';
-            btnEditor.style.display = 'block'; // Volver a mostrar botón editar
-            
-            document.getElementById('nuevoMotivoTexto').value = ""; // Limpiar input
+            document.getElementById('contenedorMotivos').style.display = 'block';
+            document.getElementById('editorMotivosContainer').style.display = 'none';
+            document.getElementById('btnEditarMotivos').style.display = 'block'; 
+            document.getElementById('nuevoMotivoTexto').value = ""; 
         }
 
-        // Dibuja la lista de motivos con inputs y botones de borrar dentro del editor
         function renderizarListaEditor() {
             const contLista = document.getElementById('listaEditorMotivos');
-            contLista.innerHTML = ""; // Limpiar
-
+            contLista.innerHTML = ""; 
             if (motivosEdicionActual.length === 0) {
-                contLista.innerHTML = '<p style="font-size:13px; color:#7f8c8d; text-align:center; padding:10px;">La lista está vacía. Agrega un motivo abajo.</p>';
+                contLista.innerHTML = '<p style="font-size:13px; color:#7f8c8d; text-align:center; padding:10px;">La lista está vacía.</p>';
                 return;
             }
-
             motivosEdicionActual.forEach((m, index) => {
                 contLista.innerHTML += `
                     <div style="display: flex; gap: 5px; margin-bottom: 8px; align-items: center; border-bottom: 1px solid #eee; padding-bottom: 8px;">
@@ -323,54 +301,33 @@
             });
         }
 
-        // Actualiza el texto en la variable temporal cuando el usuario escribe en un input del editor
         function actualizarTextoMotivoTemp(index, nuevoTexto) {
-            const textoLimpio = nuevoTexto.trim();
-            if (textoLimpio) {
-                motivosEdicionActual[index] = textoLimpio;
-            } else {
-                // Si el usuario deja el campo vacío, lo borramos al guardar o podemos borrarlo ahora
-                // Por simplicidad, lo dejamos y lo filtramos al guardar.
-                motivosEdicionActual[index] = ""; 
-            }
+            motivosEdicionActual[index] = nuevoTexto.trim() || ""; 
         }
 
         function agregarMotivoEditor() {
             const input = document.getElementById('nuevoMotivoTexto');
             const texto = input.value.trim();
-            
             if (!texto) return alert("Escribe algo en el campo de texto.");
-
             motivosEdicionActual.push(texto);
-            input.value = ""; // Limpiar
+            input.value = ""; 
             renderizarListaEditor();
         }
 
         function eliminarMotivoEditor(index) {
-            if (confirm(`¿Eliminar el motivo: "${motivosEdicionActual[index]}"?`)) {
+            if (confirm(`¿Eliminar motivo?`)) {
                 motivosEdicionActual.splice(index, 1);
                 renderizarListaEditor();
             }
         }
 
         function guardarCambiosMotivos() {
-            // Filtrar cualquier motivo que haya quedado vacío por error del usuario al editar
             const motivosFinales = motivosEdicionActual.map(m => m.trim()).filter(m => m !== "");
-            
-            if (motivosFinales.length === 0 && motivosEdicionActual.length > 0) {
-                if(!confirm("Parece que borraste el texto de todos los motivos. ¿Deseas guardar la lista vacía?")) return;
-            }
-
-            // Guardar en localStorage de forma permanente
             localStorage.setItem('listaMotivosGestionPY', JSON.stringify(motivosFinales));
-            
-            // Recargar la vista normal de checks
             cargarMotivosChecks();
-            cancelarEditorMotivos(); // Cerrar editor
-            alert("✅ Lista de motivos actualizada correctamente.");
+            cancelarEditorMotivos(); 
+            alert("✅ Lista de motivos actualizada.");
         }
-
-        // 🌟 FIN FUNCIONES EDITOR 🌟
 
         function cambiarPantalla(p) {
             document.getElementById('loginSection').style.display = 'none';
@@ -387,9 +344,20 @@
             if (u) {
                 cambiarPantalla('scannerSection');
                 document.getElementById('welcomeMsg').innerText = "Bienvenido: " + (u.displayName || u.email);
+                
+                // --- SEGURIDAD DE ADMINISTRADOR ---
+                const emailUsuario = u.email.toLowerCase();
+                const esAdmin = ADMIN_EMAILS.includes(emailUsuario);
+                
+                // Mostrar/Ocultar controles según rol
+                document.getElementById('btnSumarEvento').style.display = esAdmin ? 'inline-block' : 'none';
+                document.getElementById('btnRestarEvento').style.display = esAdmin ? 'inline-block' : 'none';
+                document.getElementById('btnEditarMotivos').style.display = esAdmin ? 'inline-block' : 'none';
+                document.getElementById('btnDescargarExcel').style.display = esAdmin ? 'block' : 'none';
+
                 encenderCamara(); 
                 cargarEventos();
-                cargarMotivosChecks(); // Cargar motivos al iniciar
+                cargarMotivosChecks();
             }
         });
         
@@ -417,46 +385,31 @@
                 v = v.substring(0, 2) + '/' + v.substring(2, 4) + '/' + v.substring(4, 8);
             }
             input.value = v;
-
-            if (v.length === 10) {
-                calcularEdad();
-            } else {
-                document.getElementById('resEdad').value = ""; 
-            }
+            if (v.length === 10) { calcularEdad(); } else { document.getElementById('resEdad').value = ""; }
         }
 
         function calcularEdad() {
             const nacInput = document.getElementById('resNacimiento').value.trim();
             const edadInput = document.getElementById('resEdad');
-            
             const partes = nacInput.match(/(\d{2})[-/](\d{2})[-/](\d{4})/);
             if (partes) {
                 const dia = parseInt(partes[1], 10);
                 const mes = parseInt(partes[2], 10) - 1; 
                 const anio = parseInt(partes[3], 10);
-                
                 const fechaNac = new Date(anio, mes, dia);
                 const hoy = new Date();
-                
                 let edad = hoy.getFullYear() - fechaNac.getFullYear();
                 const m = hoy.getMonth() - fechaNac.getMonth();
-                
-                if (m < 0 || (m === 0 && hoy.getDate() < fechaNac.getDate())) {
-                    edad--;
-                }
+                if (m < 0 || (m === 0 && hoy.getDate() < fechaNac.getDate())) { edad--; }
                 edadInput.value = edad >= 0 ? edad : "";
-            } else {
-                edadInput.value = "";
-            }
+            } else { edadInput.value = ""; }
         }
 
         async function encenderCamara() {
             try {
                 const s = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment", width: { ideal: 1280 } } });
                 document.getElementById('video').srcObject = s;
-            } catch (e) {
-                console.log(e);
-            }
+            } catch (e) { console.log(e); }
         }
 
         async function capturarCedula() {
@@ -496,13 +449,11 @@
                 let apellidos = "", nombres = "";
                 for(let i = 0; i < lineas.length; i++) {
                     let lineaActual = lineas[i];
-
                     if(/(APELL|PELL|APEL|APELLIDO)/.test(lineaActual)) {
                         let textoLimpiado = lineaActual.replace(/.*(APELLIDOS?|PELLIDOS?|APEL)\s*/, '').replace(/[^A-ZÑ\s]/g, '').trim();
                         if (textoLimpiado.length > 2) { apellidos = textoLimpiado; } 
                         else if (lineas[i+1]) { apellidos = lineas[i+1].replace(/[^A-ZÑ\s]/g, '').trim(); }
                     }
-
                     if(/(NOMB|NONB|NOMBRE)/.test(lineaActual)) {
                         let textoLimpiado = lineaActual.replace(/.*(NOMBRES?|NONBRES?|NOMBRE)\s*/, '').replace(/[^A-ZÑ\s]/g, '').trim();
                         if (textoLimpiado.length > 2) { nombres = textoLimpiado; } 
